@@ -2,8 +2,9 @@ import numpy as np
 from tkinter import Canvas, Text, Tk
 import csv
 
-NB_LIEUX = 20
-LARGEUR = 800 
+NB_LIEUX = 100
+MAX_DISTANCE_MATRIX_POINTS = 250
+LARGEUR = 800
 HAUTEUR = 600
 
 class Lieu:
