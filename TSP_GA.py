@@ -1,7 +1,7 @@
 import random
 from DaWay import NB_LIEUX
 
-POP_SIZE = 100
+POP_SIZE = 5
 ELITE_COUNT = 1
 
 class TSP_GA:
@@ -12,8 +12,9 @@ class TSP_GA:
         self.population = []
         number_of_places = len(graph.list_lieux) if graph is not None else NB_LIEUX
         for _ in range(population_size):
-            route = list(range(number_of_places))
+            route = list(range(1, number_of_places))
             random.shuffle(route)
+            route = [0, *route, 0]
             self.population.append(route)
         return self.population
 
@@ -36,9 +37,10 @@ class TSP_GA:
         self.population = new_population
 
     def mutation(self, route, mutation_rate=0.01):
-        for i in range(len(route)):
+        internal_positions = range(1, len(route) - 1)
+        for i in internal_positions:
             if random.random() < mutation_rate:
-                j = random.randint(0, len(route) - 1)
+                j = random.randint(1, len(route) - 2)
                 route[i], route[j] = route[j], route[i]
         return route
 
@@ -49,17 +51,24 @@ class TSP_GA:
         return best_route
 
     def crossover(self, parent1, parent2):
-        start = random.randint(0, len(parent1) - 1)
-        end = random.randint(start, len(parent1) - 1)
-        child = [None] * len(parent1)
-        child[start:end + 1] = parent1[start:end + 1]
-        for i in range(len(parent2)):
-            if parent2[i] not in child:
-                for j in range(len(child)):
-                    if child[j] is None:
-                        child[j] = parent2[i]
-                        break
-        return child
+        parent1_interior = parent1[1:-1]
+        parent2_interior = parent2[1:-1]
+        if not parent1_interior:
+            return [0, 0]
+
+        start = random.randint(0, len(parent1_interior) - 1)
+        end = random.randint(start, len(parent1_interior) - 1)
+        child_interior = [None] * len(parent1_interior)
+        child_interior[start:end + 1] = parent1_interior[start:end + 1]
+        remaining_places = [
+            place for place in parent2_interior if place not in child_interior
+        ]
+        empty_positions = [
+            index for index, place in enumerate(child_interior) if place is None
+        ]
+        for index, place in zip(empty_positions, remaining_places):
+            child_interior[index] = place
+        return [0, *child_interior, 0]
 
 
 

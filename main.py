@@ -13,7 +13,7 @@ def main():
         tsp_ga.reproduction(graph)
         best_route = min(tsp_ga.population, key=lambda route: graph.calcul_distance_route(route))
         best_distance = graph.calcul_distance_route(best_route)
-        print(f"Generation {generation}: Best distance = {best_distance}")
+        print(f"Best route in generation {generation}: {best_route} with distance {best_distance}")
 
 
 

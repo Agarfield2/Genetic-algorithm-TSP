@@ -5,7 +5,7 @@ import pandas as pd
 from tkinter import *
 import csv
 
-NB_LIEUX = 20
+NB_LIEUX = 5
 LARGEUR = 800 
 HAUTEUR = 600
 
@@ -47,6 +47,16 @@ class Graph:
         return nearest_lieu
  
     def calcul_distance_route(self, route):
+        expected_places = set(range(len(self.list_lieux)))
+        if (
+            len(route) != len(self.list_lieux) + 1
+            or not route
+            or route[0] != 0
+            or route[-1] != 0
+            or set(route[:-1]) != expected_places
+        ):
+            raise ValueError("A route must visit every place once and return to place 0.")
+
         distance = 0
         for i in range(len(route) - 1):
             distance += self.list_lieux[route[i]].distance(self.list_lieux[route[i + 1]])
@@ -63,4 +73,3 @@ class Affichage:
         canvas.pack()
         Zone_de_texte.pack()
         app.mainloop()
-
