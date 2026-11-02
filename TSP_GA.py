@@ -1,7 +1,5 @@
 import random
 
-from DaWay import NB_LIEUX
-
 POP_SIZE = 100
 ELITE_COUNT = 1
 
@@ -63,8 +61,8 @@ class TSP_GA:
         self.generations_without_improvement = 0
         self.current_mutation_rate = mutation_rate
 
-    def init_population(self, graph=None):
-        number_of_places = len(graph.list_lieux) if graph is not None else NB_LIEUX
+    def init_population(self, graph):
+        number_of_places = len(graph.list_lieux)
         if number_of_places < 1:
             raise ValueError("The graph must contain at least one place.")
 
@@ -100,13 +98,8 @@ class TSP_GA:
         while len(self.population) < self.population_size:
             self.population.append(self._random_route(number_of_places))
 
-        if graph is not None:
-            self._fitness = self._calculate_fitness(graph, self.population)
-            self._update_global_best()
-        else:
-            self._fitness = []
-            self._best_route = None
-            self._best_distance = float("inf")
+        self._fitness = self._calculate_fitness(graph, self.population)
+        self._update_global_best()
         self.generations_without_improvement = 0
         return self.population
 

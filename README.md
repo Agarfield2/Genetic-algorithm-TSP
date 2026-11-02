@@ -14,7 +14,7 @@ Tkinter est fourni avec la plupart des installations Python pour Windows et macO
 
 ## Données et exécution
 
-Les fichiers CSV doivent contenir les colonnes `x` et `y`, une ligne par point. Le fichier utilisé se choisit avec `CSV_PATH` en haut de [main.py](./main.py); le réglage actuel est `csv/graph_100.csv`.
+Les fichiers CSV doivent contenir les colonnes `x` et `y`, une ligne par point. Le fichier utilisé se choisit avec `CSV_PATH` en haut de [main.py](./main.py); le réglage actuel est `csv/graph_20.csv`. Le nombre de points est lu automatiquement depuis ce fichier, il n’y a pas de constante `NB_LIEUX` à synchroniser.
 
 Depuis la racine du dépôt, lancez :
 

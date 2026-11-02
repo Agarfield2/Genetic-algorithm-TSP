@@ -4,7 +4,6 @@ from tkinter import Canvas, Text, Tk
 
 import numpy as np
 
-NB_LIEUX = 100
 MAX_DISTANCE_MATRIX_POINTS = 250
 LARGEUR = 800
 HAUTEUR = 600
@@ -50,13 +49,15 @@ class Graph:
         self.neighbor_count = neighbor_count
         self.neighbor_cell_radius = neighbor_cell_radius
         self.neighbor_sample_size = neighbor_sample_size
-        self.csv_path = csv_path or f"csv/graph_{NB_LIEUX}.csv"
+        self.csv_path = csv_path
         self.list_lieux = []
         self.matrice_od = None
         self.neighbor_candidates = []
         self._coordinates = np.empty((0, 2), dtype=np.float64)
 
     def charger_graph(self):
+        if self.csv_path is None:
+            raise ValueError("csv_path must be provided to load a graph.")
         with open(self.csv_path, newline="", encoding="utf-8") as data:
             lecteur_csv = csv.DictReader(data)
             if not lecteur_csv.fieldnames or not {"x", "y"}.issubset(

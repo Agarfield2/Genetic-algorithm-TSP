@@ -5,7 +5,7 @@ from DaWay import Graph
 from TSP_GA import TSP_GA
 
 GENERATIONS = 1000
-CSV_PATH = "csv/graph_100.csv"
+CSV_PATH = "csv/graph_20.csv"
 POPULATION_SIZE = 1000
 ELITE_COUNT = 5
 MUTATION_RATE = 0.01
