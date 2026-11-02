@@ -1,7 +1,5 @@
 import random
-
 from DaWay import *
-
 
 POP_SIZE = 100
 
@@ -21,8 +19,16 @@ class TSP_GA:
             parent1 = self.selection(graph)
             parent2 = self.selection(graph)
             child = self.crossover(parent1, parent2)
+            child = self.mutation(child)
             new_population.append(child)
         self.population = new_population
+
+    def mutation(self, route, mutation_rate=0.01):
+        for i in range(len(route)):
+            if random.random() < mutation_rate:
+                j = random.randint(0, len(route) - 1)
+                route[i], route[j] = route[j], route[i]
+        return route
 
     def selection(self, graph):
         tournament_size = 5

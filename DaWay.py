@@ -54,9 +54,7 @@ class Graph:
         
 class Route:
     ordre = []
-
-    
-
+  
 class Affichage:
     def affiche(self):
         app=Tk()
@@ -66,5 +64,3 @@ class Affichage:
         Zone_de_texte.pack()
         app.mainloop()
 
-class TSP_GA:
-    x = 0 

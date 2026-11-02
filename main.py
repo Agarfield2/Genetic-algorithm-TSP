@@ -8,7 +8,7 @@ def main():
     tsp_ga = TSP_GA()
     tsp_ga.init_population(graph=graph)
 
-    for generation in range(100):  # Number of generations
+    for generation in range(100): 
         tsp_ga.reproduction(graph)
         best_route = min(tsp_ga.population, key=lambda route: graph.calcul_distance_route(route))
         best_distance = graph.calcul_distance_route(best_route)
