@@ -1,35 +1,39 @@
 # Genetic algorithm TSP
 
-Projet Python autour du problème du voyageur de commerce (TSP, *Traveling Salesperson Problem*). L’objectif est de représenter des lieux, calculer des distances et rechercher un itinéraire, avec une visualisation graphique.
-
-> **État du projet :** le code est encore en cours de développement. `DaWay.py` contient des classes et des méthodes incomplètes; il ne peut pas encore être exécuté tel quel.
-
-## Contenu
-
-- `DaWay.py` : ébauche de l’application et de ses classes (`Lieu`, `Graph`, `Route` et `Affichage`).
-- `csv/graph_5.csv` et `csv/graph_20.csv` : exemples de coordonnées de lieux au format CSV, avec les colonnes `x` et `y`.
-- `requirements.txt` : dépendances Python externes.
-
-## Prérequis
-
-- Python 3
-- `pip`
-- Tkinter, généralement inclus avec Python sous Windows et macOS. Sous Linux, il peut être nécessaire d’installer le paquet Tkinter de la distribution.
+Projet Python de recherche d’une tournée pour le problème du voyageur de commerce (TSP, *Traveling Salesperson Problem*). Les fichiers CSV doivent contenir les coordonnées des points dans les colonnes `x` et `y`.
 
 ## Installation
 
-Depuis la racine du dépôt, installez les dépendances :
+Python 3 et `pip` sont nécessaires. Installez NumPy :
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Les modules `random`, `time` et `csv` font partie de la bibliothèque standard de Python. Tkinter est également fourni séparément de `pip` avec de nombreuses installations de Python.
+Tkinter est fourni avec la plupart des installations Python pour Windows et macOS. Sous Linux, installez le paquet Tkinter de votre distribution si nécessaire.
 
 ## Exécution
 
-L’application n’est pas encore exécutable : certaines méthodes de `DaWay.py` sont vides et le fichier comporte des blocs de code incomplets. Une commande de lancement sera documentée lorsque l’algorithme et l’interface seront implémentés.
+Depuis la racine du projet :
 
-## Format des données
+```bash
+python main.py
+```
 
-Les fichiers d’exemple dans `csv/` contiennent une ligne d’en-tête (`x,y`), suivie d’une ligne par lieu. Les coordonnées sont des nombres décimaux destinés à représenter les positions des lieux.
+## Paramètres de l’algorithme
+
+Tous les hyperparamètres se règlent en haut de `main.py` :
+
+- `GENERATIONS` : nombre de générations.
+- `POPULATION_SIZE` : nombre de tournées dans la population.
+- `ELITE_COUNT` : nombre de meilleures tournées conservées à chaque génération.
+- `MUTATION_RATE` : probabilité de mutation de chaque position intérieure d’une tournée, entre `0` et `1`.
+- `TOURNAMENT_SIZE` : nombre de candidats comparés pour sélectionner un parent.
+
+Les valeurs sont transmises à `TSP_GA`; elles sont validées à sa création. `NB_LIEUX` dans `DaWay.py` choisit le CSV d’exemple chargé par défaut.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -v
+```

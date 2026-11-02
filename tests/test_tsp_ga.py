@@ -21,11 +21,21 @@ class RouteCost:
 
 
 class TSPGATests(unittest.TestCase):
+    def make_algorithm(self, population_size=5, **overrides):
+        parameters = {
+            "population_size": population_size,
+            "elite_count": 1,
+            "mutation_rate": 0.01,
+            "tournament_size": 5,
+        }
+        parameters.update(overrides)
+        return TSP_GA(**parameters)
+
     def test_population_starts_and_ends_at_place_zero(self):
         graph = type("GraphStub", (), {"list_lieux": [None] * 5})()
-        algorithm = TSP_GA()
+        algorithm = self.make_algorithm(population_size=8)
 
-        population = algorithm.init_population(population_size=8, graph=graph)
+        population = algorithm.init_population(graph=graph)
 
         self.assertEqual(len(population), 8)
         for route in population:
@@ -34,7 +44,7 @@ class TSPGATests(unittest.TestCase):
             self.assertEqual(sorted(route[1:-1]), list(range(1, 5)))
 
     def test_crossover_and_mutation_keep_routes_as_permutations(self):
-        algorithm = TSP_GA()
+        algorithm = self.make_algorithm()
         parent1 = [0, 1, 2, 3, 4, 0]
         parent2 = [0, 4, 3, 2, 1, 0]
 
@@ -46,7 +56,7 @@ class TSPGATests(unittest.TestCase):
             self.assertEqual(sorted(route[1:-1]), list(range(1, 5)))
 
     def test_reproduction_preserves_the_best_route(self):
-        algorithm = TSP_GA()
+        algorithm = self.make_algorithm()
         algorithm.population = [
             [0, 1, 2, 0],
             [0, 2, 1, 0],
@@ -115,7 +125,7 @@ class TSPGATests(unittest.TestCase):
                 return route[1]
 
         class FakeAlgorithm:
-            def __init__(self):
+            def __init__(self, **parameters):
                 self.scores = iter([10, 10, 8, 8, 7])
                 self.population = []
 

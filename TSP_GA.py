@@ -1,17 +1,34 @@
 import random
 from DaWay import NB_LIEUX
 
-POP_SIZE = 100
-ELITE_COUNT = 1
 
 class TSP_GA:
-    def __init__(self):
+    def __init__(
+        self,
+        population_size,
+        elite_count,
+        mutation_rate,
+        tournament_size,
+    ):
+        if population_size < 1:
+            raise ValueError("population_size must be greater than zero.")
+        if not 0 <= elite_count <= population_size:
+            raise ValueError("elite_count must be between zero and population_size.")
+        if not 0 <= mutation_rate <= 1:
+            raise ValueError("mutation_rate must be between zero and one.")
+        if tournament_size < 1:
+            raise ValueError("tournament_size must be greater than zero.")
+
+        self.population_size = population_size
+        self.elite_count = elite_count
+        self.mutation_rate = mutation_rate
+        self.tournament_size = tournament_size
         self.population = []
 
-    def init_population(self, population_size=POP_SIZE, graph=None):
+    def init_population(self, graph=None):
         self.population = []
         number_of_places = len(graph.list_lieux) if graph is not None else NB_LIEUX
-        for _ in range(population_size):
+        for _ in range(self.population_size):
             route = list(range(1, number_of_places))
             random.shuffle(route)
             route = [0, *route, 0]
@@ -19,7 +36,7 @@ class TSP_GA:
         return self.population
 
     def reproduction(self, graph):
-        elite_count = min(ELITE_COUNT, len(self.population))
+        elite_count = min(self.elite_count, len(self.population))
         new_population = [
             list(route)
             for route in sorted(
@@ -32,7 +49,7 @@ class TSP_GA:
             parent1 = self.selection(graph)
             parent2 = self.selection(graph)
             child = self.crossover(parent1, parent2)
-            child = self.mutation(child)
+            child = self.mutation(child, self.mutation_rate)
             new_population.append(child)
         self.population = new_population
 
@@ -45,7 +62,7 @@ class TSP_GA:
         return route
 
     def selection(self, graph):
-        tournament_size = min(5, len(self.population))
+        tournament_size = min(self.tournament_size, len(self.population))
         tournament = random.sample(self.population, tournament_size)
         best_route = min(tournament, key=lambda route: graph.calcul_distance_route(route))
         return best_route
