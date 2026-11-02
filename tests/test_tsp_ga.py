@@ -10,6 +10,7 @@ from unittest.mock import patch
 from DaWay import Graph, Lieu
 from TSP_GA import TSP_GA
 import main
+from nearest_insertion import nearest_insertion
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -146,6 +147,21 @@ class TSPGATests(unittest.TestCase):
         with self.assertRaises(ValueError):
             graph.validate_route([0, 1, 1, 0])
 
+    def test_nearest_insertion_returns_a_valid_closed_tour(self):
+        graph = Graph(matrix_limit=10, neighbor_count=0)
+        graph.list_lieux = [
+            Lieu(0, 0),
+            Lieu(0, 1),
+            Lieu(1, 1),
+            Lieu(1, 0),
+        ]
+        graph.calcul_matrice_cout_od()
+
+        route = nearest_insertion(graph)
+
+        self.assertTrue(graph.validate_route(route))
+        self.assertEqual(graph.calcul_distance_route(route), 4)
+
     def test_distance_matrix_and_neighbor_candidates_respect_limits(self):
         graph = Graph(
             matrix_limit=3,
@@ -168,6 +184,52 @@ class TSPGATests(unittest.TestCase):
         small_graph = Graph(matrix_limit=4, neighbor_count=2)
         small_graph.list_lieux = graph.list_lieux
         self.assertEqual(small_graph.calcul_matrice_cout_od().shape, (4, 4))
+
+    def test_space_filling_route_is_a_valid_closed_tour(self):
+        graph = Graph(neighbor_count=0)
+        graph.list_lieux = [
+            Lieu(0, 0),
+            Lieu(0, 1),
+            Lieu(1, 1),
+            Lieu(1, 0),
+        ]
+
+        route = graph.space_filling_route()
+
+        self.assertTrue(graph.validate_route(route))
+
+    def test_population_starts_with_a_spatially_seeded_route(self):
+        graph = Graph(neighbor_count=0)
+        graph.list_lieux = [
+            Lieu(0, 0),
+            Lieu(0, 1),
+            Lieu(1, 1),
+            Lieu(1, 0),
+        ]
+        algorithm = self.make_algorithm(population_size=10)
+        expected_route = graph.space_filling_route()
+
+        with patch.object(
+            algorithm,
+            "two_opt",
+            side_effect=lambda route, _graph, _attempts: route,
+        ):
+            population = algorithm.init_population(graph)
+
+        self.assertEqual(population[0], expected_route)
+        self.assertTrue(graph.validate_route(population[0]))
+
+    def test_large_graph_solver_budget_is_bounded(self):
+        self.assertEqual(main.get_solver_budget(100), (1000, 1000))
+
+        population_size, generations = main.get_solver_budget(10_000)
+
+        self.assertGreater(population_size, 1)
+        self.assertGreater(generations, 1)
+        self.assertLessEqual(
+            10_000 * population_size * generations,
+            main.MAX_ROUTE_EVALUATIONS,
+        )
 
     def test_csv_samples_have_expected_headers_and_rows(self):
         for filename, expected_rows in (
@@ -249,8 +311,8 @@ class TSPGATests(unittest.TestCase):
         ]
         self.assertEqual(len(improvements), 3)
         self.assertIn("generation 0", improvements[0])
-        self.assertIn("generation : 2", improvements[1])
-        self.assertIn("generation : 4", improvements[2])
+        self.assertIn("generation 2", improvements[1])
+        self.assertIn("generation 4", improvements[2])
 
 
 if __name__ == "__main__":

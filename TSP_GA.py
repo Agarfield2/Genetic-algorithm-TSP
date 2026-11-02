@@ -69,10 +69,36 @@ class TSP_GA:
             raise ValueError("The graph must contain at least one place.")
 
         self.population = []
-        for _ in range(self.population_size):
-            route = list(range(1, number_of_places))
-            random.shuffle(route)
-            self.population.append([0, *route, 0])
+        route_builder = getattr(graph, "space_filling_route", None)
+        if route_builder is not None:
+            seed_route = route_builder()
+            seed_search_attempts = min(256, max(8, number_of_places // 4))
+            for _ in range(50):
+                previous_route = seed_route.copy()
+                seed_route = self.two_opt(
+                    seed_route,
+                    graph,
+                    seed_search_attempts,
+                )
+                if seed_route == previous_route:
+                    break
+
+            seeded_count = min(
+                self.population_size,
+                max(1, self.population_size // 10),
+            )
+            self.population.append(list(seed_route))
+            seed_mutation_rate = min(
+                self.mutation_rate,
+                2 / max(1, number_of_places - 1),
+            )
+            for _ in range(seeded_count - 1):
+                route = list(seed_route)
+                self.mutation(route, mutation_rate=seed_mutation_rate)
+                self.population.append(route)
+
+        while len(self.population) < self.population_size:
+            self.population.append(self._random_route(number_of_places))
 
         if graph is not None:
             self._fitness = self._calculate_fitness(graph, self.population)

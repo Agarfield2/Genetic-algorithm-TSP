@@ -16,6 +16,22 @@ class Lieu:
         self.y = y
 
 
+def _hilbert_index(x, y, bits=16):
+    index = 0
+    scale = 1 << (bits - 1)
+    while scale:
+        x_bit = 1 if x & scale else 0
+        y_bit = 1 if y & scale else 0
+        index += scale * scale * ((3 * x_bit) ^ y_bit)
+        if y_bit == 0:
+            if x_bit:
+                x = (1 << bits) - 1 - x
+                y = (1 << bits) - 1 - y
+            x, y = y, x
+        scale >>= 1
+    return index
+
+
 class Graph:
     def __init__(
         self,
@@ -168,6 +184,31 @@ class Graph:
         delta_x = self._coordinates[first, 0] - self._coordinates[second, 0]
         delta_y = self._coordinates[first, 1] - self._coordinates[second, 1]
         return float(np.hypot(delta_x, delta_y))
+
+    def space_filling_route(self):
+        self._ensure_coordinates()
+        number_of_places = len(self.list_lieux)
+        if number_of_places == 0:
+            raise ValueError("The graph must contain at least one place.")
+        if number_of_places == 1:
+            return [0, 0]
+
+        minimums = self._coordinates.min(axis=0)
+        spans = self._coordinates.max(axis=0) - minimums
+        safe_spans = np.where(spans == 0, 1, spans)
+        grid = np.rint(
+            (self._coordinates - minimums) / safe_spans * ((1 << 16) - 1)
+        ).astype(np.int64)
+        ordered_places = sorted(
+            range(number_of_places),
+            key=lambda place: (
+                _hilbert_index(int(grid[place, 0]), int(grid[place, 1])),
+                place,
+            ),
+        )
+        start = ordered_places.index(0)
+        ordered_places = ordered_places[start:] + ordered_places[:start]
+        return [*ordered_places, 0]
 
     def plus_proche_voisin(self, lieu, visites):
         visited = visites if isinstance(visites, set) else set(visites)

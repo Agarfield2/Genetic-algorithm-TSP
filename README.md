@@ -24,6 +24,14 @@ python main.py
 
 Le programme affiche au démarrage le nombre de points réellement chargés et le fichier utilisé.
 
+Pour calculer une solution de référence avec l’heuristique Nearest Insertion sur `csv/graph_100.csv`, lancez séparément :
+
+```bash
+python nearest_insertion.py
+```
+
+Le script affiche la distance de la tournée, son temps de calcul et la route fermée obtenue. La distance peut être comparée à celle du calcul génétique sur le même CSV.
+
 ## Paramètres
 
 Les hyperparamètres et principaux réglages de performance se trouvent en haut de `main.py` :
@@ -35,6 +43,8 @@ Les hyperparamètres et principaux réglages de performance se trouvent en haut 
 - `FITNESS_BATCH_SIZE` limite la mémoire temporaire utilisée lors du calcul groupé des scores.
 - `DISTANCE_MATRIX_LIMIT` fixe le nombre maximal de points pour créer une matrice complète de distances.
 - `NEIGHBOR_COUNT`, `NEIGHBOR_CELL_RADIUS` et `NEIGHBOR_SAMPLE_SIZE` règlent les voisins candidats utilisés par 2-opt.
+- `MAX_ROUTE_EVALUATIONS` plafonne le travail génétique pour les graphes au-dessus de `DISTANCE_MATRIX_LIMIT`.
+- `MAX_POPULATION_ROUTE_CELLS` limite la mémoire utilisée par la population de grandes tournées.
 
 ## Performances et limites
 
@@ -44,9 +54,11 @@ Les hyperparamètres et principaux réglages de performance se trouvent en haut 
 - La validation complète d’une tournée est disponible via `Graph.validate_route`; le calcul fréquent vérifie la forme et les indices pour éviter un contrôle de permutation répété.
 - Après stagnation, le taux de mutation augmente et des tournées aléatoires peuvent être injectées.
 - Le 2-opt teste seulement des candidats proches et échantillonnés, pas toutes les paires d’arêtes.
+- La population contient des variantes d’une tournée initiale ordonnée par courbe de Hilbert, améliorée par plusieurs passes 2-opt, plutôt que d’être entièrement aléatoire.
+- Au-dessus de `DISTANCE_MATRIX_LIMIT`, la taille de population et le nombre de générations s’adaptent au nombre de points et au budget configuré. Le programme affiche ces valeurs au démarrage.
 - Pour les grandes tournées, la route complète n’est pas écrite dans la console.
 
-Ces optimisations réduisent certains coûts mais ne rendent pas instantanée une recherche sur 10 000 points. Une population de 1 000 tournées de cette taille demande beaucoup de temps et de mémoire; adaptez `POPULATION_SIZE` et `GENERATIONS` à la machine et mesurez les résultats sur vos données.
+Ces optimisations réduisent le temps de calcul et donnent à la recherche une tournée initiale structurée, mais ne garantissent pas l’optimum global. Comparez les distances et les temps sur vos données; vous pouvez augmenter `MAX_ROUTE_EVALUATIONS` si vous acceptez un calcul plus long.
 
 ## Tests
 
