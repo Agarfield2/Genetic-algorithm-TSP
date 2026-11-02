@@ -3,10 +3,6 @@ import time
 from DaWay import Graph
 from TSP_GA import TSP_GA
 
-<<<<<<< Updated upstream
-GENERATIONS = 100
-REPORT_EVERY = 10
-=======
 GENERATIONS = 1000
 CSV_PATH = "csv/graph_100.csv"
 POPULATION_SIZE = 1000
@@ -25,7 +21,6 @@ DISTANCE_MATRIX_LIMIT = 250
 NEIGHBOR_COUNT = 16
 NEIGHBOR_CELL_RADIUS = 2
 NEIGHBOR_SAMPLE_SIZE = 128
->>>>>>> Stashed changes
 
 
 def main():
@@ -40,9 +35,6 @@ def main():
     print(f"Loaded {len(graph.list_lieux)} points from {CSV_PATH}")
     graph.calcul_matrice_cout_od()
 
-<<<<<<< Updated upstream
-    tsp_ga = TSP_GA()
-=======
     tsp_ga = TSP_GA(
         population_size=POPULATION_SIZE,
         elite_count=ELITE_COUNT,
@@ -56,25 +48,10 @@ def main():
         local_search_attempts=LOCAL_SEARCH_ATTEMPTS,
         fitness_batch_size=FITNESS_BATCH_SIZE,
     )
->>>>>>> Stashed changes
     tsp_ga.init_population(graph=graph)
     best_route, best_distance = tsp_ga.best_solution()
+    best_route_list = []
     print(f"New best at generation 0: distance = {best_distance:.2f}")
-
-<<<<<<< Updated upstream
-    for generation in range(GENERATIONS):
-        tsp_ga.reproduction(graph)
-        if (generation + 1) % REPORT_EVERY == 0 or generation + 1 == GENERATIONS:
-            _, best_distance = tsp_ga.best_solution()
-            print(f"Generation {generation + 1}: best distance = {best_distance:.2f}")
-
-    best_route, best_distance = tsp_ga.best_solution()
-    print(
-        f"Best solution: distance = {best_distance:.2f}, "
-        f"visits = {len(best_route) - 1}"
-    )
-
-=======
     start_time = time.perf_counter()
     for generation in range(GENERATIONS):
         tsp_ga.reproduction(graph)
@@ -82,10 +59,11 @@ def main():
         if current_best_distance < best_distance:
             best_route = current_best_route
             best_distance = current_best_distance
+            best_route_list.append(best_route)
             print(
-                f"New best at generation {generation + 1}: "
-                f"distance = {best_distance:.2f}"
-                f"liste = {best_route}"
+                f"New best at generation : {generation + 1} \n"
+                f"distance = {best_distance:.2f} \n"
+                f"liste = {best_route} \n\n"
             )
 
     print(
@@ -94,9 +72,10 @@ def main():
     )
     if len(best_route) <= 102:
         print(f"Best route: {best_route}")
+        print(f"Best distance: {best_distance:.2f}")
+        print(f"list of 5 last best routes: {best_route_list[-5:]}")
     else:
         print(f"Best route contains {len(best_route) - 1} edges; not printed.")
->>>>>>> Stashed changes
 
 
 if __name__ == "__main__":
