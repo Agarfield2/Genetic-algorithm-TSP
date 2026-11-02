@@ -1,5 +1,5 @@
 import numpy as np
-from random import randint
+from random import shuffle, randint
 import time 
 import pandas as pd
 from tkinter import *
@@ -53,7 +53,8 @@ class Graph:
         return distance
         
 class Route:
-    order = []
+    ordre = []
+
     
 
 class Affichage:
@@ -67,8 +68,3 @@ class Affichage:
 
 class TSP_GA:
     x = 0 
-
-
-graph = Graph()
-graph.charger_graph()
-graph.print_graph()
