@@ -1,7 +1,7 @@
 import random
 from DaWay import NB_LIEUX
 
-POP_SIZE = 5
+POP_SIZE = 100
 ELITE_COUNT = 1
 
 

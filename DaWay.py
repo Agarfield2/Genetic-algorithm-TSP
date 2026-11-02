@@ -6,7 +6,8 @@ import numpy as np
 
 NB_LIEUX = 20
 MAX_DISTANCE_MATRIX_POINTS = 250
-LARGEUR = 800
+
+LARGEUR = 800 
 HAUTEUR = 600
 
 
