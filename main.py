@@ -1,6 +1,6 @@
 import time
 
-from DaWay import Graph
+from DaWay import Graph, Affichage, Route, Lieu
 from TSP_GA import TSP_GA
 
 GENERATIONS = 1000
@@ -74,6 +74,11 @@ def main():
         print(f"Best route: {best_route}")
         print(f"Best distance: {best_distance:.2f}")
         print(f"list of 5 last best routes: {best_route_list[-5:]}")
+        affichage=Affichage(graph,best_route,best_distance,best_route_list[-2:])#,best_generation,nb_pop
+        affichage.affiche() 
+
+
+
     else:
         print(f"Best route contains {len(best_route) - 1} edges; not printed.")
 
