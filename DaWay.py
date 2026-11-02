@@ -17,6 +17,8 @@ class Lieu:
 
 class Graph:
     list_lieux = []
+    matrice_od = np.zeros((NB_LIEUX, NB_LIEUX))
+
     def charger_graph(self):
         name = "csv/graph_"+str(NB_LIEUX)+".csv"
         print(name)
@@ -29,12 +31,27 @@ class Graph:
                 self.list_lieux.append(lieu)
 
     def calcul_matrice_cout_od(self):
-        return 0
-    def plus_proche_voisin(self):
-        return 0
-    def calcul_distance_route(self):
-        return 0
+        for i in range(NB_LIEUX):
+            for j in range(NB_LIEUX):
+                self.matrice_od[i][j] = self.list_lieux[i].distance(self.list_lieux[j])
 
+    def plus_proche_voisin(self,lieu,visites):
+        min_distance = float('inf')
+        nearest_lieu = None
+        for i, other_lieu in enumerate(self.list_lieux):
+            if i not in visites:
+                distance = lieu.distance(other_lieu)
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest_lieu = i
+        return nearest_lieu
+ 
+    def calcul_distance_route(self, route):
+        distance = 0
+        for i in range(len(route) - 1):
+            distance += self.list_lieux[route[i]].distance(self.list_lieux[route[i + 1]])
+        return distance
+        
 class Route:
     order = []
     
