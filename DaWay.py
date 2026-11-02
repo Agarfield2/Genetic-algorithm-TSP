@@ -1,8 +1,5 @@
 import numpy as np
-from random import shuffle, randint
-import time 
-import pandas as pd
-from tkinter import *
+from tkinter import Canvas, Text, Tk
 import csv
 
 NB_LIEUX = 20

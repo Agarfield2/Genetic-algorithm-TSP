@@ -1,12 +1,15 @@
 import csv
+import io
 import subprocess
 import sys
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
 from TSP_GA import TSP_GA
 from DaWay import Graph, Lieu
+import main
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,6 +102,40 @@ class TSPGATests(unittest.TestCase):
 
         self.assertEqual(result.stdout, "")
         self.assertEqual(result.stderr, "")
+
+    def test_main_reports_only_new_best_solutions(self):
+        class FakeGraph:
+            def charger_graph(self):
+                pass
+
+            def calcul_matrice_cout_od(self):
+                pass
+
+            def calcul_distance_route(self, route):
+                return route[1]
+
+        class FakeAlgorithm:
+            def __init__(self):
+                self.scores = iter([10, 10, 8, 8, 7])
+                self.population = []
+
+            def init_population(self, graph):
+                self.population = [[0, next(self.scores), 0]]
+
+            def reproduction(self, graph):
+                self.population = [[0, next(self.scores), 0]]
+
+        output = io.StringIO()
+        with patch.object(main, "GENERATIONS", 4), patch.object(
+            main, "Graph", return_value=FakeGraph()
+        ), patch.object(main, "TSP_GA", FakeAlgorithm), redirect_stdout(output):
+            main.main()
+
+        lines = output.getvalue().splitlines()
+        self.assertEqual(len(lines), 3)
+        self.assertIn("generation 0", lines[0])
+        self.assertIn("generation 2", lines[1])
+        self.assertIn("generation 4", lines[2])
 
 
 if __name__ == "__main__":
