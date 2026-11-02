@@ -5,7 +5,7 @@ import pandas as pd
 from tkinter import *
 import csv
 
-NB_LIEUX = 5
+NB_LIEUX = 20
 LARGEUR = 800 
 HAUTEUR = 600
 
