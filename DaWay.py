@@ -5,9 +5,9 @@ import pandas as pd
 from tkinter import *
 import csv
 
-NB_LIEUX = 0
+NB_LIEUX = 20
 LARGEUR = 800 
-HAUTEUR = 600 
+HAUTEUR = 600
 
 class Lieu:
     x = 0
@@ -17,11 +17,23 @@ class Lieu:
 
 class Graph:
     list_lieux = []
+    def charger_graph(self):
+        name = "csv/graph_"+str(NB_LIEUX)+".csv"
+        print(name)
+        with open(name, "r") as data:
+            lecteur_csv = csv.DictReader(data)
+            for ligne in lecteur_csv:
+                lieu = Lieu()
+                lieu.x = float(ligne["x"])
+                lieu.y = float(ligne["y"])
+                self.list_lieux.append(lieu)
+
     def calcul_matrice_cout_od(self):
         return 0
     def plus_proche_voisin(self):
-
+        return 0
     def calcul_distance_route(self):
+        return 0
 
 class Route:
     order = []
@@ -35,3 +47,11 @@ class Affichage:
         canvas.pack()
         Zone_de_texte.pack()
         app.mainloop()
+
+class TSP_GA:
+    x = 0 
+
+
+graph = Graph()
+graph.charger_graph()
+graph.print_graph()
