@@ -1,6 +1,10 @@
 from DaWay import Graph
 from TSP_GA import TSP_GA
 
+GENERATIONS = 100
+REPORT_EVERY = 10
+
+
 def main():
     graph = Graph()
     graph.charger_graph()
@@ -9,11 +13,17 @@ def main():
     tsp_ga = TSP_GA()
     tsp_ga.init_population(graph=graph)
 
-    for generation in range(100): 
+    for generation in range(GENERATIONS):
         tsp_ga.reproduction(graph)
-        best_route = min(tsp_ga.population, key=lambda route: graph.calcul_distance_route(route))
-        best_distance = graph.calcul_distance_route(best_route)
-        print(f"Best route in generation {generation}: {best_route} with distance {best_distance}")
+        if (generation + 1) % REPORT_EVERY == 0 or generation + 1 == GENERATIONS:
+            _, best_distance = tsp_ga.best_solution()
+            print(f"Generation {generation + 1}: best distance = {best_distance:.2f}")
+
+    best_route, best_distance = tsp_ga.best_solution()
+    print(
+        f"Best solution: distance = {best_distance:.2f}, "
+        f"visits = {len(best_route) - 1}"
+    )
 
 
 
