@@ -1,4 +1,5 @@
-from TSP_GA import *
+from DaWay import Graph
+from TSP_GA import TSP_GA
 
 def main():
     graph = Graph()
@@ -16,4 +17,5 @@ def main():
 
 
 
-main()
+if __name__ == "__main__":
+    main()

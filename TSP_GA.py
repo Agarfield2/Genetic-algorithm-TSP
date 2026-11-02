@@ -1,21 +1,33 @@
 import random
-from DaWay import *
+from DaWay import NB_LIEUX
 
 POP_SIZE = 100
+ELITE_COUNT = 1
 
 class TSP_GA:
-    population = []
+    def __init__(self):
+        self.population = []
 
-    def init_population(self, population_size = POP_SIZE, graph = None):
+    def init_population(self, population_size=POP_SIZE, graph=None):
+        self.population = []
+        number_of_places = len(graph.list_lieux) if graph is not None else NB_LIEUX
         for _ in range(population_size):
-            route = list(range(NB_LIEUX))
+            route = list(range(number_of_places))
             random.shuffle(route)
             self.population.append(route)
         return self.population
 
     def reproduction(self, graph):
-        new_population = []
-        for _ in range(len(self.population)):
+        elite_count = min(ELITE_COUNT, len(self.population))
+        new_population = [
+            list(route)
+            for route in sorted(
+                self.population,
+                key=lambda route: graph.calcul_distance_route(route),
+            )[:elite_count]
+        ]
+
+        while len(new_population) < len(self.population):
             parent1 = self.selection(graph)
             parent2 = self.selection(graph)
             child = self.crossover(parent1, parent2)
@@ -31,7 +43,7 @@ class TSP_GA:
         return route
 
     def selection(self, graph):
-        tournament_size = 5
+        tournament_size = min(5, len(self.population))
         tournament = random.sample(self.population, tournament_size)
         best_route = min(tournament, key=lambda route: graph.calcul_distance_route(route))
         return best_route
