@@ -64,12 +64,60 @@ class Graph:
         
 class Route:
     ordre = []
-  
+
 class Affichage:
+    def __init__(self, graph, best_route, best_distance, list_best_route):
+        self.list_lieux = graph.list_lieux
+        self.best_route = best_route
+        self.best_distance = best_distance
+        self.list_best_route = list_best_route
+
     def affiche(self):
         app=Tk()
         canvas=Canvas(app,width=LARGEUR,height=HAUTEUR)
+        for lieu in self.list_lieux:
+            if lieu.x < LARGEUR and lieu.y < HAUTEUR and lieu.y > 0 and lieu.x > 0:
+                canvas.create_oval(lieu.x-5, lieu.y-5, lieu.x+5, lieu.y+5, fill="red")
+        meilleur_route = self.best_route
+        compteur=0
+        for meilleur in meilleur_route:
+            lieu1 = self.list_lieux[meilleur]
+            canvas.create_text(lieu1.x, lieu1.y - 10, text=str(compteur))
+            compteur += 1
+            lieu2 = self.list_lieux[meilleur_route[(meilleur_route.index(meilleur)+1)]]
+            canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,  dash=(4, 8), fill="blue", width=3)
         Zone_de_texte=Text(app,width=50,height=50)
+        Zone_de_texte.insert(END, "Performances :\n")#ajout dans la zone de texte 
+        def esc(event):
+            print("20/20")
+            app.destroy()
+
+
+        def action(event):
+            for liste in self.list_best_route:
+                for j in range(len(liste)-1):
+                    a = liste[j]
+                    b = liste[(j+1)]    
+                    val = False     # boucle sur le segment
+                    for i in range(len(meilleur_route)-1):  # boucle sur le meilleur chemin
+                        if (a == meilleur_route[i] and b == meilleur_route[i+1]):
+                            val = True
+                            break
+                    if val== True:
+                        val = False
+                        continue                            # déjà dessiné en bleu
+                    lieu1 = self.list_lieux[a]
+                    lieu2 = self.list_lieux[b]
+                    canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,
+                                    dash=(5, 5), fill="gray", width=2)
+
+
+        app.bind("q", action) 
+           # Entrée
+        app.bind("<Escape>", esc)
+
         canvas.pack()
         Zone_de_texte.pack()
         app.mainloop()
+        #pour chaque lieu du graphe on creer un cercle compris dans la fenetre 
+    

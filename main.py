@@ -1,4 +1,4 @@
-from DaWay import Graph
+from DaWay import Affichage, Graph
 from TSP_GA import TSP_GA,POP_SIZE
 
 def main():
@@ -21,6 +21,10 @@ def main():
             best_generation = generation
             list_best_route.append(best_route)
             print(f"Best route in generation {generation}: {best_route} with distance {best_distance}")
+
+
+    affichage= Affichage(graph, best_route,best_distance,list_best_route[-2:])#,best_generation,nb_pop
+    affichage.affiche() 
 
 
 if __name__ == "__main__":
