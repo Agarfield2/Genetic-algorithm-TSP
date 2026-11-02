@@ -1,5 +1,5 @@
 import numpy as np
-from random import randint
+from random import shuffle, randint
 import time 
 import pandas as pd
 from tkinter import *
@@ -47,15 +47,24 @@ class Graph:
         return nearest_lieu
  
     def calcul_distance_route(self, route):
+        expected_places = set(range(len(self.list_lieux)))
+        if (
+            len(route) != len(self.list_lieux) + 1
+            or not route
+            or route[0] != 0
+            or route[-1] != 0
+            or set(route[:-1]) != expected_places
+        ):
+            raise ValueError("A route must visit every place once and return to place 0.")
+
         distance = 0
         for i in range(len(route) - 1):
             distance += self.list_lieux[route[i]].distance(self.list_lieux[route[i + 1]])
         return distance
         
 class Route:
-    order = []
-    
-
+    ordre = []
+  
 class Affichage:
     def affiche(self):
         app=Tk()
@@ -64,11 +73,3 @@ class Affichage:
         canvas.pack()
         Zone_de_texte.pack()
         app.mainloop()
-
-class TSP_GA:
-    x = 0 
-
-
-graph = Graph()
-graph.charger_graph()
-graph.print_graph()
