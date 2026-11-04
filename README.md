@@ -4,6 +4,8 @@ Projet Python qui cherche une tournée courte pour le problème du voyageur de c
 
 L'algorithme génétique est une heuristique : il cherche une bonne solution, mais ne garantit pas de trouver l'optimum global.
 
+Une explication détaillée des modules, des algorithmes et des tests est disponible dans [`test/code_explaination.md`](./test/code_explaination.md).
+
 ## Installation
 
 Python 3 et `pip` sont nécessaires. Installez la dépendance Python du projet depuis la racine du dépôt :
@@ -61,6 +63,15 @@ Il affiche la distance, le temps de calcul et la tournée fermée. Pour comparer
 - [nearest_insertion.py](./nearest_insertion.py) fournit l'heuristique de comparaison Nearest Insertion.
 - [csv/generate_graph.py](./csv/generate_graph.py) génère des CSV de points aléatoires.
 - [tests/test_tsp_ga.py](./tests/test_tsp_ga.py) contient les tests automatisés.
+- [test_heuristique.py](./test_heuristique.py) compare plusieurs heuristiques de tournée sur les CSV `graph_5.csv`, `graph_20.csv` et `graph_100.csv`.
+
+Pour afficher le tableau comparatif des heuristiques :
+
+```bash
+python test_heuristique.py
+```
+
+Le tableau donne la distance et le temps de calcul sur chaque jeu de points. Christofides utilise un appariement exact et est donc volontairement limité aux instances où le nombre de sommets impairs du MST reste petit. Le 3-opt explore toutes les coupures sur les petits jeux et échantillonne les coupures sur les plus grands. Lin-Kernighan est une recherche à échanges séquentiels bornée par les paramètres du script ; Chained Lin-Kernighan relance cette recherche après des perturbations double-bridge. Les résultats servent à comparer les heuristiques sur ces exemples, pas à garantir leur classement sur des jeux ou graines différents.
 
 ## Paramètres et budget de calcul
 
