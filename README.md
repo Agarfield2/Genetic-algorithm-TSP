@@ -1,18 +1,39 @@
 # Genetic algorithm TSP
 
-Projet Python qui cherche une tournée courte pour le problème du voyageur de commerce (TSP). Chaque point représente un lieu défini par ses coordonnées `x` et `y`. Une tournée visite chaque lieu une fois et revient au point de départ `0`, par exemple `[0, 3, 1, 2, 0]`.
-
-L'algorithme génétique est une heuristique : il cherche une bonne solution, mais ne garantit pas de trouver l'optimum global.
+<<<<<<<<< Temporary merge branch 1
+Projet Python de recherche d’une tournée pour le problème du voyageur de commerce (TSP). Une tournée commence et se termine au point `0`, par exemple `[0, 3, 1, 2, 0]`.
 
 ## Installation
 
-Python 3 et `pip` sont nécessaires. Installez la dépendance Python du projet depuis la racine du dépôt :
+Python 3 et `pip` sont nécessaires. Installez NumPy :
+=========
+Projet Python autour du problème du voyageur de commerce (TSP, *Traveling Salesperson Problem*). L’objectif est de représenter des lieux, calculer des distances et rechercher un itinéraire, avec une visualisation graphique.
+
+> **État du projet :** le code est encore en cours de développement. `DaWay.py` contient des classes et des méthodes incomplètes; il ne peut pas encore être exécuté tel quel.
+
+## Contenu
+
+- `DaWay.py` : ébauche de l’application et de ses classes (`Lieu`, `Graph`, `Route` et `Affichage`).
+- `csv/graph_5.csv` et `csv/graph_20.csv` : exemples de coordonnées de lieux au format CSV, avec les colonnes `x` et `y`.
+- `requirements.txt` : dépendances Python externes.
+
+## Prérequis
+
+- Python 3
+- `pip`
+- Tkinter, généralement inclus avec Python sous Windows et macOS. Sous Linux, il peut être nécessaire d’installer le paquet Tkinter de la distribution.
+
+## Installation
+
+Depuis la racine du dépôt, installez les dépendances :
+>>>>>>>>> Temporary merge branch 2
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Le calcul numérique utilise NumPy. Le solveur utilise aussi `multiprocessing`, fourni avec Python, pour lancer jusqu'à quatre recherches indépendantes sur plusieurs coeurs ; aucune dépendance supplémentaire n'est à installer pour cela. Tkinter n'est importé que si l'affichage graphique est utilisé. Il est fourni avec la plupart des installations Python Windows et macOS ; sous Linux, installez le paquet Tkinter de votre distribution si nécessaire.
+<<<<<<<<< Temporary merge branch 1
+Tkinter est fourni avec la plupart des installations Python pour Windows et macOS. Sous Linux, installez le paquet Tkinter de votre distribution si nécessaire.
 
 ## Données
 
@@ -88,3 +109,14 @@ Depuis la racine du dépôt :
 ```bash
 python -m unittest discover -s tests -v
 ```
+=========
+Les modules `random`, `time` et `csv` font partie de la bibliothèque standard de Python. Tkinter est également fourni séparément de `pip` avec de nombreuses installations de Python.
+
+## Exécution
+
+L’application n’est pas encore exécutable : certaines méthodes de `DaWay.py` sont vides et le fichier comporte des blocs de code incomplets. Une commande de lancement sera documentée lorsque l’algorithme et l’interface seront implémentés.
+
+## Format des données
+
+Les fichiers d’exemple dans `csv/` contiennent une ligne d’en-tête (`x,y`), suivie d’une ligne par lieu. Les coordonnées sont des nombres décimaux destinés à représenter les positions des lieux.
+>>>>>>>>> Temporary merge branch 2

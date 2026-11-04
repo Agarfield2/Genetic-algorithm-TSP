@@ -5,6 +5,7 @@ import time
 import numpy as np
 
 from DaWay import Graph
+from DaWay import Affichage
 from TSP_GA import TSP_GA
 
 GENERATIONS = 1000
@@ -85,6 +86,26 @@ def _create_solver(population_size):
         local_search_attempts=LOCAL_SEARCH_ATTEMPTS,
         fitness_batch_size=FITNESS_BATCH_SIZE,
     )
+    tsp_ga.init_population(graph=graph)
+    best_route, best_distance = tsp_ga.best_solution()
+    best_route_list = []
+    print(f"New best at generation 0: distance = {best_distance:.2f}")
+    start_time = time.perf_counter()
+    for generation in range(generations):
+        tsp_ga.reproduction(graph)
+        current_best_route, current_best_distance = tsp_ga.best_solution()
+        if current_best_distance < best_distance:
+            best_route = current_best_route
+            best_distance = current_best_distance
+            print(
+                f"New best at generation {generation + 1}: "
+                f"distance = {best_distance:.2f}"
+            )
+            if len(best_route) <= 102:
+                best_route_list.append(best_route)
+                print(f"Route: {best_route}")
+            else:
+                print(f"Route with {len(best_route) - 1} edges not printed.")
 
 
 def _run_parallel_search(task):
@@ -179,6 +200,9 @@ def main():
             print(f"List of 5 last best routes: {best_route_list[-5:]}")
     else:
         print(f"Best route contains {len(best_route) - 1} edges; not printed.")
+
+    affichage= Affichage(graph, best_route,best_distance,best_route_list[-3:])#,best_generation,nb_pop
+    affichage.affiche() 
 
 
 if __name__ == "__main__":
