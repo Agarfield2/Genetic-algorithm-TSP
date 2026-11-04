@@ -1,13 +1,8 @@
-<<<<<<< HEAD
-from DaWay import Affichage, Graph
-from TSP_GA import TSP_GA,POP_SIZE
-=======
 import time
 from math import isqrt
 
 from DaWay import Graph
 from TSP_GA import TSP_GA
->>>>>>> Meca
 
 GENERATIONS = 1000
 CSV_PATH = "csv/graph_20.csv"
@@ -94,21 +89,6 @@ def main():
         fitness_batch_size=FITNESS_BATCH_SIZE,
     )
     tsp_ga.init_population(graph=graph)
-<<<<<<< HEAD
-    oldest_distance, oldest_route = float('inf'), None
-    list_best_route = []
-    for generation in range(100): 
-        tsp_ga.reproduction(graph)
-        best_route = min(tsp_ga.population, key=lambda route: graph.calcul_distance_route(route))
-        best_distance = graph.calcul_distance_route(best_route)
-        
-        if best_distance < oldest_distance:
-            oldest_distance = best_distance
-            oldest_route = best_route
-            best_generation = generation
-            list_best_route.append(best_route)
-            print(f"Best route in generation {generation}: {best_route} with distance {best_distance}")
-=======
     best_route, best_distance = tsp_ga.best_solution()
     best_route_list = []
     print(f"New best at generation 0: distance = {best_distance:.2f}")
@@ -128,7 +108,6 @@ def main():
                 print(f"Route: {best_route}")
             else:
                 print(f"Route with {len(best_route) - 1} edges not printed.")
->>>>>>> Meca
 
     print(
         f"Finished {generations} generations in "
