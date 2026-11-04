@@ -83,5 +83,9 @@ def main():
         print(f"Best route contains {len(best_route) - 1} edges; not printed.")
 
 
+    affichage= Affichage(graph, best_route,best_distance,list_best_route[-3:])#,best_generation,nb_pop
+    affichage.affiche() 
+
+
 if __name__ == "__main__":
     main()
