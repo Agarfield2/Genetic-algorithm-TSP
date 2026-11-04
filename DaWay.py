@@ -265,8 +265,11 @@ class Affichage:
 
 
         def action(event):
+<<<<<<< HEAD
             for liste in self.list_best_route:
+=======
             for x, liste in enumerate(self.list_best_route):
+>>>>>>> pol
                 for j in range(len(liste)-1):
                     a = liste[j]
                     b = liste[(j+1)]    
@@ -280,6 +283,7 @@ class Affichage:
                         continue                            # déjà dessiné en bleu
                     lieu1 = self.list_lieux[a]
                     lieu2 = self.list_lieux[b]
+<<<<<<< HEAD
                     canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,
                                     dash=(5, 5), fill="gray", width=2)
 =======

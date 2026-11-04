@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import time
 
 from DaWay import Graph, Affichage, Route, Lieu
@@ -22,6 +23,10 @@ NEIGHBOR_COUNT = 16
 NEIGHBOR_CELL_RADIUS = 2
 NEIGHBOR_SAMPLE_SIZE = 128
 
+=======
+from DaWay import Affichage, Graph
+from TSP_GA import TSP_GA,POP_SIZE
+>>>>>>> pol
 
 def main():
     graph = Graph(
