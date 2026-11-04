@@ -2,6 +2,7 @@ import time
 from math import isqrt
 
 from DaWay import Graph
+from DaWay import Affichage
 from TSP_GA import TSP_GA
 
 GENERATIONS = 1000
@@ -120,7 +121,7 @@ def main():
     else:
         print(f"Best route contains {len(best_route) - 1} edges; not printed.")
 
-    affichage= Affichage(graph, best_route,best_distance,list_best_route[-3:])#,best_generation,nb_pop
+    affichage= Affichage(graph, best_route,best_distance,best_route_list[-3:])#,best_generation,nb_pop
     affichage.affiche() 
 
 
