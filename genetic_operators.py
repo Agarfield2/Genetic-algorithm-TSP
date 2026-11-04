@@ -29,8 +29,8 @@ class GeneticOperators:
         if swap_count:
             positions = random.sample(range(1, len(route) - 1), swap_count)
             last_position = len(route) - 2
-            for position in positions:
-                other = random.randint(1, last_position)
+            partners = random.choices(range(1, last_position + 1), k=swap_count)
+            for position, other in zip(positions, partners):
                 route[position], route[other] = route[other], route[position]
         return route
 
@@ -41,16 +41,19 @@ class GeneticOperators:
 
         start = random.randint(1, number_of_internal_places)
         end = random.randint(start, number_of_internal_places)
+        segment = parent1[start:end + 1]
         child = [None] * (number_of_internal_places + 2)
         child[0] = child[-1] = 0
-        child[start:end + 1] = parent1[start:end + 1]
-        selected_places = set(parent1[start:end + 1])
-        remaining_places = iter(
-            place for place in parent2[1:-1] if place not in selected_places
-        )
-        for position in range(1, number_of_internal_places + 1):
-            if child[position] is None:
-                child[position] = next(remaining_places)
+        child[start:end + 1] = segment
+        selected_places = set(segment)
+        position = 1
+        for place in parent2[1:-1]:
+            if place in selected_places:
+                continue
+            if position == start:
+                position = end + 1
+            child[position] = place
+            position += 1
         return child
 
     def two_opt(self, route, graph, attempts):

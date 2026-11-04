@@ -16,6 +16,9 @@ Le programme utilise plusieurs heuristiques et un algorithme génétique. Ce
 sont des méthodes de recherche : elles produisent de bonnes solutions, mais
 ne garantissent généralement pas de trouver l'optimum global.
 
+Pour le déroulement pas à pas de l'algorithme génétique, de la population
+initiale jusqu'au résultat final, voir [`genetique.md`](./genetique.md).
+
 ## 2. Vue d'ensemble des fichiers
 
 | Fichier | Responsabilité |
@@ -26,6 +29,7 @@ ne garantissent généralement pas de trouver l'optimum global.
 | [`genetic_evolution.py`](../genetic_evolution.py) | Création de la population initiale et construction des générations suivantes. |
 | [`genetic_operators.py`](../genetic_operators.py) | Sélection, croisement, mutation et recherche locale 2-opt. |
 | [`route_population.py`](../route_population.py) | Création de tournées et déduplication des cycles. |
+| [`parallel_evolution.py`](../parallel_evolution.py) | Production parallèle des descendants à partir d'une population partagée en mode infini. |
 | [`nearest_insertion.py`](../nearest_insertion.py) | Heuristique Nearest Insertion exécutable séparément. |
 | [`csv/generate_graph.py`](../csv/generate_graph.py) | Génération d'un jeu de points aléatoires au format CSV. |
 | [`test_heuristique.py`](../test_heuristique.py) | Implémentations de comparaison de plusieurs heuristiques et benchmark des exemples. |
@@ -165,7 +169,8 @@ une zone de texte et une boucle d'événements. Elle n'est pas appelée par
 
 `TSP_GA` est l'API du solveur. Elle hérite des fonctions d'évolution, des
 opérateurs génétiques et des utilitaires de population définis dans les autres
-modules.
+modules. Le guide détaillé de son fonctionnement, de l'initialisation à la fin
+de la recherche, se trouve dans [`genetique.md`](./genetique.md).
 
 Le constructeur vérifie les paramètres (tailles positives, taux entre 0 et 1,
 etc.) puis conserve :
@@ -179,133 +184,20 @@ etc.) puis conserve :
 
 Une distance plus petite représente une solution meilleure.
 
-### 5.1 Évaluation et meilleur résultat
+`_calculate_fitness()` évalue les tournées, de préférence par lots.
+`_update_global_best()` copie toute amélioration stricte afin de la conserver
+malgré le remplacement des générations. `best_solution()` renvoie une copie
+du meilleur trajet et son score.
 
-`_calculate_fitness()` privilégie le calcul par lots de `Graph` lorsqu'il est
-disponible, et utilise sinon une évaluation tournée par tournée.
+`genetic_evolution.py` assemble les étapes : initialisation hybride à partir
+d'une tournée Hilbert, variantes mutées et routes aléatoires, puis création
+des générations successives. `genetic_operators.py` fournit sélection,
+croisement, mutation et recherche locale 2-opt. `route_population.py` assure
+l'unicité des cycles, en considérant une tournée et son inverse comme le même
+cycle. Les détails et un exemple d'exécution sont présentés dans le guide
+dédié.
 
-`_update_global_best()` compare le meilleur score de la population au meilleur
-historique. Lorsqu'il est strictement meilleur, il copie la tournée dans
-`_best_route`. La copie est importante : les listes de la population peuvent
-être modifiées ultérieurement.
-
-`best_solution()` renvoie une nouvelle copie de la tournée et sa distance. Le
-meilleur est conservé en mémoire dans chaque solveur ; il n'est pas écrit dans
-un fichier.
-
-### 5.2 Diversité et mutation adaptative
-
-`_population_diversity()` compare des positions échantillonnées dans chaque
-tournée et renvoie la proportion de signatures différentes dans la population.
-C'est une estimation de diversité, pas une comparaison exhaustive de chaque
-paire de tournées.
-
-`_adaptive_mutation_rate()` augmente progressivement le taux de mutation après
-des générations sans amélioration, du taux initial jusqu'à son plafond. Une
-amélioration remet le compteur de stagnation à zéro.
-
-## 6. Population et évolution — `genetic_evolution.py`
-
-### 6.1 Initialisation
-
-`init_population(graph)` :
-
-1. refuse un graphe vide ;
-2. réduit si besoin la taille de population au nombre de cycles distincts
-   possibles (voir `route_population.py`) ;
-3. demande une tournée de départ ordonnée par Hilbert ;
-4. essaie de l'améliorer jusqu'à 50 fois avec 2-opt échantillonné, en arrêtant
-   plus tôt si elle ne change plus ;
-5. ajoute cette tournée et quelques versions mutées à faible taux ;
-6. complète la population avec des tournées aléatoires sans doublons ;
-7. énumère des permutations si le hasard n'a pas suffi à remplir la population ;
-8. calcule les scores et enregistre le meilleur initial.
-
-La population initiale est donc hybride : une solution spatiale structurée,
-quelques variantes proches et des solutions aléatoires. Le nombre réservé aux
-variantes de la tournée Hilbert est environ 10 % de la population, avec au
-moins une route de départ.
-
-### 6.2 Reproduction d'une génération
-
-`reproduction(graph)` crée la génération suivante :
-
-1. s'assure que les scores existants sont calculés ;
-2. mesure la diversité et choisit le taux de mutation adaptatif ;
-3. trie les individus par distance et copie les `elite_count` meilleures
-   tournées dans la nouvelle génération ;
-4. estime le nombre d'immigrants à injecter si la recherche stagne et que le
-   seuil de diversité ou de stagnation est atteint ;
-5. crée les autres enfants par sélection, croisement, mutation et parfois
-   2-opt ;
-6. rejette les enfants et immigrants qui dupliquent une tournée déjà présente ;
-7. complète les places restantes avec des tournées uniques ;
-8. calcule les scores des nouveaux enfants et met à jour le meilleur global ;
-9. met à jour le compteur de stagnation et le taux de mutation.
-
-Les nouveaux individus sont évalués une seule fois puis leur score est gardé
-pour la génération suivante. Les élites gardent leurs scores déjà connus.
-
-## 7. Opérateurs génétiques — `genetic_operators.py`
-
-### Sélection par tournoi
-
-`selection()` tire au hasard jusqu'à `tournament_size` indices distincts, puis
-retourne celui dont la distance est la plus faible. Les bons individus sont
-favorisés, mais les moins bons peuvent également être sélectionnés.
-
-### Croisement
-
-`crossover(parent1, parent2)` choisit un segment intérieur du premier parent et
-le copie dans l'enfant. Il remplit les cases restantes dans l'ordre du second
-parent en sautant les lieux déjà présents. Le dépôt et la fermeture par `0`
-sont préservés.
-
-### Mutation
-
-`mutation(route, mutation_rate)` calcule un nombre moyen d'échanges
-proportionnel au nombre de lieux intérieurs. La partie fractionnaire est
-appliquée avec un tirage aléatoire. Les échanges ne modifient que l'ordre des
-lieux, pas le départ ni le retour `0`.
-
-### Recherche locale 2-opt
-
-2-opt sélectionne des arêtes candidates à partir des voisins préparés par
-`Graph`. Il évalue le remplacement de deux arêtes par deux nouvelles arêtes.
-Si le changement réduit la distance, le segment compris entre ces arêtes est
-inversé.
-
-Dans le solveur principal, 2-opt est appelé :
-
-- sur la tournée Hilbert initiale, jusqu'à 50 passes au maximum ;
-- sur certains enfants, selon `local_search_rate`, avec
-  `local_search_attempts` essais par appel.
-
-Cette version est volontairement échantillonnée et ne teste pas toutes les
-paires d'arêtes.
-
-## 8. Unicité des routes — `route_population.py`
-
-`_route_key(route)` compare les deux orientations du cycle et choisit la plus
-petite représentation lexicographique. Ainsi `[0, 1, 2, 3, 0]` et
-`[0, 3, 2, 1, 0]` sont considérées comme le même cycle non orienté.
-
-`_append_unique_route()` ajoute une copie d'une tournée seulement si sa clé
-n'est pas déjà présente. Cette règle est appliquée à l'initialisation et à la
-reproduction.
-
-Pour `n` lieux, le nombre théorique de cycles non orientés fixant le départ à
-`0` est `(n - 1)! / 2` pour `n >= 3`. `_unique_route_limit()` calcule juste ce
-qu'il faut pour limiter la taille de population au nombre possible, sans
-calculer une factorielle énorme lorsque ce nombre dépasse déjà la population
-configurée.
-
-Si les enfants uniques obtenus par mutation et croisement ne suffisent pas,
-`_fill_unique_population()` parcourt les permutations lexicographiques des
-lieux pour compléter la population. Cela garantit l'absence de doublons, mais
-peut donner une population plus petite que prévu pour de très petits graphes.
-
-## 9. Programme principal et parallélisme — `main.py`
+## 6. Programme principal et parallélisme — `main.py`
 
 ### Paramètres
 
@@ -327,7 +219,7 @@ plus grands, il limite le produit population × générations selon :
 Le programme affiche la population et le nombre de générations effectivement
 choisis.
 
-### Mode séquentiel et mode parallèle
+### Mode fini
 
 `_create_graph()` et `_create_solver()` construisent les objets avec les
 paramètres de configuration.
@@ -337,28 +229,37 @@ distribuant le reste aux premiers processus. `_run_parallel_search()` reçoit
 un nombre de générations et une graine, crée son propre graphe et son propre
 solveur, puis effectue une recherche indépendante.
 
-Dans `main()` :
+Dans le mode fini par défaut, un seul travailleur exécute une recherche dans
+le processus principal. Avec plusieurs travailleurs, `multiprocessing.Pool`
+lance plusieurs recherches indépendantes ; elles ne partagent pas leurs
+populations et le processus principal compare leurs meilleurs résultats à la
+fin.
 
-- si un seul travailleur est nécessaire, une seule recherche effectue les
-  générations et le programme affiche les améliorations successives ;
-- sinon, un `multiprocessing.Pool` lance jusqu'à quatre recherches en parallèle
-  et le processus principal choisit le meilleur résultat retourné.
+### Mode coopératif sans limite de générations
 
-Les travailleurs ne partagent pas leurs populations ni leurs meilleurs
-résultats pendant le calcul. Le meilleur général entre processus est comparé à
-la fin seulement. Le meilleur propre à chaque processus est conservé en mémoire
-jusqu'à ce que son résultat soit renvoyé au processus principal.
+`python main.py --infinite` lance une population unique qui continue jusqu'à
+`Ctrl+C`. `parallel_evolution.py` permet aux processus de lire le même état de
+population et de scores depuis des tableaux en mémoire partagée. Chaque
+processus produit un lot de descendants à partir de cette population. Après la
+fin des tâches, le processus principal rassemble les enfants, élimine les
+cycles en double, complète et évalue la génération suivante.
 
-Le programme actuel n'est pas infini : il effectue le nombre configuré de
-générations et se termine. Il n'enregistre pas d'historique durable des
-améliorations et ne pilote pas de bouton ou d'affichage Tkinter. Ces fonctions
-ne sont pas implémentées dans le code décrit ici.
+Après plus de `RESTART_AFTER_STAGNATION` générations consécutives sans
+amélioration globale, le mode infini recrée la population et remet le taux de
+mutation à sa valeur initiale. Le meilleur historique est conservé pendant
+cette réinitialisation.
+
+Il n'y a pas de limite de générations dans ce mode, mais la taille de la
+population est limitée par `POPULATION_SIZE` et `MAX_POPULATION_ROUTE_CELLS`
+pour contrôler la mémoire. À l'interruption par `Ctrl+C`, le meilleur trajet,
+ses coordonnées et sa distance sont écrits dans `best_route.csv`. Ce mode ne
+pilote pas d'affichage Tkinter.
 
 La condition `if __name__ == "__main__":` empêche le lancement automatique de
 `main()` lors d'un import. C'est également nécessaire au bon fonctionnement du
 `multiprocessing` avec le mode de démarrage Windows.
 
-## 10. Heuristique Nearest Insertion — `nearest_insertion.py`
+## 7. Heuristique Nearest Insertion — `nearest_insertion.py`
 
 `nearest_insertion(graph)` construit un cycle fermé :
 
@@ -373,7 +274,7 @@ Le script autonome charge le CSV défini par son propre `CSV_PATH`, prépare le
 graphe, chronomètre la construction, vérifie la route et affiche la distance et
 la tournée. Il ne fait pas partie de la boucle du solveur génétique.
 
-## 11. Comparaison des heuristiques — `test_heuristique.py`
+## 8. Comparaison des heuristiques — `test_heuristique.py`
 
 Ce fichier contient des implémentations de benchmark pour :
 
@@ -425,7 +326,7 @@ python -m unittest test_heuristique -v
 La première commande affiche le benchmark. La seconde lance les tests unitaires
 du fichier.
 
-## 12. Tests du projet
+## 9. Tests du projet
 
 Depuis la racine du dépôt :
 
@@ -449,14 +350,17 @@ Les tests démontrent les propriétés qu'ils vérifient sur leurs cas d'essai ;
 ils ne garantissent pas la qualité optimale d'une tournée sur tout jeu de
 données.
 
-## 13. Limites importantes à garder en tête
+## 10. Limites importantes à garder en tête
 
-- Le meilleur résultat du solveur est en mémoire, pas sauvegardé durablement.
-- Les recherches parallèles sont indépendantes ; elles ne s'échangent pas leurs
-  bons individus avant la fin.
+- En mode fini, le meilleur résultat reste en mémoire et n'est pas sauvegardé
+  dans un fichier. En mode `--infinite`, il est écrit en CSV lors d'un arrêt
+  propre par `Ctrl+C`.
+- Les recherches parallèles du mode fini sont indépendantes. Le mode
+  `--infinite` fait évoluer une seule population partagée entre générations.
 - La recherche 2-opt du solveur principal est échantillonnée, contrairement au
   2-opt exhaustif du petit benchmark.
 - L'heuristique du benchmark peut avoir des limites de calcul ou d'approximation
   indiquées dans la section précédente.
-- Le code actuel s'arrête après un nombre fixe de générations et l'affichage
-  Tkinter reste un squelette non relié au solveur.
+- Le mode par défaut s'arrête après un nombre fixe de générations ; le mode
+  `--infinite` continue jusqu'à `Ctrl+C`. L'affichage Tkinter reste un
+  squelette non relié au solveur.

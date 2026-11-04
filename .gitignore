@@ -184,3 +184,11 @@ cython_debug/
 /csv/graph_*.csv
 !/csv/graph_5.csv
 !/csv/graph_20.csv
+
+# Local benchmarks and tests
+/.performance/
+/benchmark/
+/benchmarks/
+/test/
+/tests/
+/test_heuristique.py
