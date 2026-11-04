@@ -1,7 +1,9 @@
-
 import csv
 import random
-import argparse
+
+
+DEFAULT_NUMBER_OF_PLACES = 10_000
+DEFAULT_SEED = None
 
 
 def generate_graph(n, seed=None):
@@ -26,23 +28,4 @@ def generate_graph(n, seed=None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Générateur de graphes CSV"
-    )
-
-    parser.add_argument(
-        "n",
-        type=int,
-        help="Nombre de points à générer"
-    )
-
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Graine aléatoire (optionnelle)"
-    )
-
-    args = parser.parse_args()
-
-    generate_graph(args.n, args.seed)
+    generate_graph(DEFAULT_NUMBER_OF_PLACES, DEFAULT_SEED)

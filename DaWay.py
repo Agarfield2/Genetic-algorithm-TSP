@@ -1,6 +1,5 @@
 import csv
 import random
-from tkinter import Canvas, Text, Tk
 
 import numpy as np
 
@@ -284,6 +283,8 @@ class Route:
 
 class Affichage:
     def affiche(self):
+        from tkinter import Canvas, Text, Tk
+
         app = Tk()
         canvas = Canvas(app, width=LARGEUR, height=HAUTEUR)
         zone_de_texte = Text(app, width=50, height=50)

@@ -12,7 +12,7 @@ Python 3 et `pip` sont nécessaires. Installez la dépendance Python du projet d
 python -m pip install -r requirements.txt
 ```
 
-Le calcul numérique utilise NumPy. Tkinter, importé par `DaWay.py` pour l'affichage graphique, fait partie de la bibliothèque standard de Python dans la plupart des installations Windows et macOS. Sous Linux, installez le paquet Tkinter fourni par votre distribution si nécessaire.
+Le calcul numérique utilise NumPy. Le solveur utilise aussi `multiprocessing`, fourni avec Python, pour lancer jusqu'à quatre recherches indépendantes sur plusieurs coeurs ; aucune dépendance supplémentaire n'est à installer pour cela. Tkinter n'est importé que si l'affichage graphique est utilisé. Il est fourni avec la plupart des installations Python Windows et macOS ; sous Linux, installez le paquet Tkinter de votre distribution si nécessaire.
 
 ## Données
 
@@ -20,15 +20,15 @@ Un fichier de données est un CSV avec les colonnes `x` et `y`, et une ligne par
 
 Le chemin du fichier utilisé par le solveur génétique est défini par `CSV_PATH` dans [main.py](./main.py). La valeur actuelle est `csv/graph_10000.csv`. Les grands fichiers générés (`graph_*.csv`, sauf les exemples `graph_5.csv` et `graph_20.csv`) sont ignorés par Git ; il faut donc les générer localement si nécessaire.
 
-Le générateur écrit son fichier dans le répertoire courant. Pour générer le fichier de 10 000 points attendu par défaut, lancez-le depuis le dossier `csv/` :
+Le générateur écrit un CSV de 10 000 points dans le répertoire courant par défaut. Pour le créer dans `csv/` :
 
 ```bash
 cd csv
-python generate_graph.py 10000 --seed 42
+python generate_graph.py
 cd ..
 ```
 
-L'option `--seed 42` est facultative et permet de reproduire le même jeu de données. Retirez `--seed 42` pour obtenir des points différents à chaque génération, ou remplacez `10000` par la taille souhaitée.
+Pour changer le nombre de points ou fixer une graine aléatoire afin de reproduire les données, modifiez `DEFAULT_NUMBER_OF_PLACES` et `DEFAULT_SEED` dans [csv/generate_graph.py](./csv/generate_graph.py). Pour lancer ensuite le solveur sur ces données, choisissez leur chemin dans `CSV_PATH` dans `main.py`.
 
 ## Lancer le solveur génétique
 
@@ -53,7 +53,10 @@ Il affiche la distance, le temps de calcul et la tournée fermée. Pour comparer
 ## Fonctionnement du projet
 
 - [DaWay.py](./DaWay.py) charge les points depuis le CSV, calcule les distances euclidiennes, valide les tournées et prépare des voisins candidats pour la recherche locale. Pour les graphes jusqu'à `DISTANCE_MATRIX_LIMIT`, il peut stocker une matrice complète des distances ; au-delà, les distances sont calculées à la demande afin d'éviter une matrice quadratique.
-- [TSP_GA.py](./TSP_GA.py) implémente l'algorithme génétique : initialisation de la population, sélection par tournoi, croisement, mutation, conservation des meilleurs individus, suivi de diversité et recherche locale 2-opt.
+- [TSP_GA.py](./TSP_GA.py) expose le solveur génétique, ses paramètres, le calcul des scores et le suivi de la meilleure solution.
+- [genetic_evolution.py](./genetic_evolution.py) initialise la population et construit les générations suivantes.
+- [genetic_operators.py](./genetic_operators.py) contient la sélection, le croisement, la mutation et l'amélioration locale 2-opt.
+- [route_population.py](./route_population.py) construit les tournées et empêche les cycles dupliqués ; une tournée et son parcours inversé sont considérés comme le même cycle. Si le graphe ne permet pas assez de cycles distincts, la population est réduite au nombre de cycles possibles.
 - [main.py](./main.py) configure les paramètres, charge le graphe, adapte le budget de calcul à sa taille et pilote les générations.
 - [nearest_insertion.py](./nearest_insertion.py) fournit l'heuristique de comparaison Nearest Insertion.
 - [csv/generate_graph.py](./csv/generate_graph.py) génère des CSV de points aléatoires.
@@ -72,10 +75,11 @@ Les paramètres principaux se trouvent en haut de `main.py` :
 - `DISTANCE_MATRIX_LIMIT` fixe le seuil d'utilisation d'une matrice complète de distances.
 - `NEIGHBOR_COUNT`, `NEIGHBOR_CELL_RADIUS` et `NEIGHBOR_SAMPLE_SIZE` règlent la recherche des voisins candidats pour 2-opt.
 - `MAX_ROUTE_EVALUATIONS` et `MAX_POPULATION_ROUTE_CELLS` plafonnent respectivement le travail et la mémoire de la population pour les grands graphes.
+- `PARALLEL_WORKERS` fixe le nombre maximal de recherches indépendantes lancées en parallèle (4 par défaut pour une machine à quatre coeurs).
 
-Pour les graphes au-dessus de `DISTANCE_MATRIX_LIMIT`, `get_solver_budget` dans `main.py` réduit la taille de population et le nombre de générations en fonction du nombre de lieux et des plafonds configurés. Le budget réellement choisi est affiché au lancement.
+Pour les graphes au-dessus de `DISTANCE_MATRIX_LIMIT`, `get_solver_budget` dans `main.py` réduit la taille de population et le nombre de générations en fonction du nombre de lieux et des plafonds configurés. Le budget réellement choisi est affiché au lancement. Les générations sont réparties entre des recherches indépendantes : leur total reste identique au budget, et le meilleur résultat final est conservé. Cette stratégie parallélise le travail Python lié à la sélection, au croisement et aux mutations, que les threads ne répartiraient pas efficacement sur plusieurs coeurs dans Python standard.
 
-La population initiale contient des variantes d'une tournée ordonnée selon une courbe de Hilbert et améliorée par 2-opt, ainsi que des tournées aléatoires. La recherche locale 2-opt examine un échantillon de voisins proches plutôt que toutes les paires d'arêtes. Ces stratégies rendent la recherche plus praticable sur de grands graphes, sans garantir l'optimum global. La route complète n'est pas affichée pour les grandes instances.
+La population initiale contient des variantes d'une tournée ordonnée selon une courbe de Hilbert et améliorée par 2-opt, ainsi que des tournées aléatoires. La recherche locale 2-opt examine un échantillon de voisins proches plutôt que toutes les paires d'arêtes. Chaque solveur conserve en mémoire sa meilleure tournée et sa distance dès qu'il trouve une amélioration stricte. En mode parallèle, chaque processus garde son propre meilleur résultat ; le processus principal compare ces résultats à la fin des recherches. Aucun historique des améliorations n'est actuellement écrit sur disque. Ces stratégies rendent la recherche plus praticable sur de grands graphes, sans garantir l'optimum global. La route complète n'est pas affichée pour les grandes instances.
 
 ## Tests
 

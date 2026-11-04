@@ -56,6 +56,30 @@ class TSPGATests(unittest.TestCase):
             self.assertEqual((route[0], route[-1]), (0, 0))
             self.assertEqual(sorted(route[1:-1]), list(range(1, 5)))
 
+    def test_population_contains_unique_cycles_when_routes_are_exhausted(self):
+        graph = Graph(neighbor_count=0)
+        graph.list_lieux = [Lieu(index, index % 2) for index in range(4)]
+        algorithm = self.make_algorithm(population_size=20)
+
+        algorithm.init_population(graph)
+        expected_unique_cycles = {
+            (0, 1, 2, 3, 0),
+            (0, 1, 3, 2, 0),
+            (0, 2, 1, 3, 0),
+        }
+        route_keys = {algorithm._route_key(route) for route in algorithm.population}
+
+        self.assertEqual(algorithm.population_size, 3)
+        self.assertEqual(len(algorithm.population), 3)
+        self.assertEqual(route_keys, expected_unique_cycles)
+
+        for _ in range(3):
+            algorithm.reproduction(graph)
+            route_keys = {
+                algorithm._route_key(route) for route in algorithm.population
+            }
+            self.assertEqual(len(route_keys), len(algorithm.population))
+
     def test_crossover_and_mutation_keep_routes_as_permutations(self):
         algorithm = self.make_algorithm()
         parent1 = [0, 1, 2, 3, 4, 0]
@@ -86,6 +110,25 @@ class TSPGATests(unittest.TestCase):
         self.assertIn([0, 1, 2, 0], algorithm.population)
         self.assertEqual(len(algorithm.population), 5)
 
+    def test_best_solution_keeps_each_strict_global_improvement(self):
+        algorithm = self.make_algorithm()
+        algorithm.population = [
+            [0, 1, 2, 0],
+            [0, 2, 1, 0],
+        ]
+        algorithm._fitness = [10, 12]
+        algorithm._update_global_best()
+
+        saved_route, saved_distance = algorithm.best_solution()
+        saved_route[1] = 99
+        self.assertEqual((algorithm.best_solution()[0], saved_distance), ([0, 1, 2, 0], 10))
+
+        algorithm.population = [[0, 2, 1, 0]]
+        algorithm._fitness = [8]
+        algorithm._update_global_best()
+
+        self.assertEqual(algorithm.best_solution(), ([0, 2, 1, 0], 8))
+
     def test_population_fitness_is_cached_and_children_are_scored_once(self):
         graph = RouteCost()
         algorithm = self.make_algorithm(population_size=8)
@@ -112,7 +155,11 @@ class TSPGATests(unittest.TestCase):
         ) as make_route:
             algorithm.reproduction(graph)
 
-        self.assertEqual(make_route.call_count, 2)
+        self.assertGreaterEqual(make_route.call_count, 2)
+        route_keys = {
+            algorithm._route_key(route) for route in algorithm.population
+        }
+        self.assertEqual(len(route_keys), len(algorithm.population))
 
     def test_two_opt_uses_neighbor_candidates_to_improve_route(self):
         graph = Graph()
@@ -126,7 +173,7 @@ class TSPGATests(unittest.TestCase):
         algorithm = self.make_algorithm(local_search_attempts=1)
         route = [0, 2, 1, 3, 0]
 
-        with patch("TSP_GA.random.randrange", return_value=0):
+        with patch("genetic_operators.random.randrange", return_value=0):
             improved = algorithm.two_opt(route, graph, attempts=1)
 
         self.assertEqual(improved, [0, 1, 2, 3, 0])
@@ -231,6 +278,12 @@ class TSPGATests(unittest.TestCase):
             main.MAX_ROUTE_EVALUATIONS,
         )
 
+    def test_generation_budget_is_split_without_losing_generations(self):
+        counts = main._split_generations(10, 4)
+
+        self.assertEqual(counts, [3, 3, 2, 2])
+        self.assertEqual(sum(counts), 10)
+
     def test_csv_samples_have_expected_headers_and_rows(self):
         for filename, expected_rows in (
             ("graph_5.csv", 5),
@@ -301,6 +354,8 @@ class TSPGATests(unittest.TestCase):
             main, "POPULATION_SIZE", 20
         ), patch.object(main, "Graph", return_value=FakeGraph()), patch.object(
             main, "TSP_GA", FakeAlgorithm
+        ), patch.object(
+            main, "PARALLEL_WORKERS", 1
         ), redirect_stdout(output):
             main.main()
 
