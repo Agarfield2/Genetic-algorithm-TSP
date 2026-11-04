@@ -23,7 +23,7 @@ def main():
             print(f"Best route in generation {generation}: {best_route} with distance {best_distance}")
 
 
-    affichage= Affichage(graph, best_route,best_distance,list_best_route[-2:])#,best_generation,nb_pop
+    affichage= Affichage(graph, best_route,best_distance,list_best_route[-3:])#,best_generation,nb_pop
     affichage.affiche() 
 
 
