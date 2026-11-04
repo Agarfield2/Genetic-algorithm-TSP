@@ -1,6 +1,6 @@
 import csv
 import random
-
+import tkinter as Tk
 import numpy as np
 
 MAX_DISTANCE_MATRIX_POINTS = 250
@@ -281,62 +281,97 @@ class Route:
     ordre = []
 
 class Affichage:
+    def __init__(self, graph, best_route, best_distance, list_best_route=None):
+        self.list_lieux = graph.list_lieux
+        self.best_route = list(best_route)
+        self.best_distance = best_distance
+        self.list_best_route = [
+            list(route) for route in (list_best_route or [])
+        ]
+
     def affiche(self):
-        app=Tk()
-        canvas=Canvas(app,width=LARGEUR,height=HAUTEUR)
-        for lieu in self.list_lieux:
-            if lieu.x < LARGEUR and lieu.y < HAUTEUR and lieu.y > 0 and lieu.x > 0:
-                canvas.create_oval(lieu.x-5, lieu.y-5, lieu.x+5, lieu.y+5, fill="red")
-        meilleur_route = self.best_route
-        compteur=0
-        for meilleur in meilleur_route:
-            lieu1 = self.list_lieux[meilleur]
-            canvas.create_text(lieu1.x, lieu1.y - 10, text=str(compteur))
-            compteur += 1
-            lieu2 = self.list_lieux[meilleur_route[(meilleur_route.index(meilleur)+1)]]
-            canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,  dash=(4, 8), fill="blue", width=3)
-        Zone_de_texte=Text(app,width=50,height=50)
-        Zone_de_texte.insert("end", "Performances :\n")#ajout dans la zone de texte 
-        def esc(event):
-            print("20/20")
-            app.destroy()
-
-
-        def action(event):
-        
-            for x, liste in enumerate(self.list_best_route):
-                for j in range(len(liste)-1):
-                    a = liste[j]
-                    b = liste[(j+1)]    
-                    val = False     # boucle sur le segment
-                    for i in range(len(meilleur_route)-1):  # boucle sur le meilleur chemin
-                        if (a == meilleur_route[i] and b == meilleur_route[i+1]):
-                            val = True
-                            break
-                    if val== True:
-                        val = False
-                        continue                            # déjà dessiné en bleu
-                    lieu1 = self.list_lieux[a]
-                    lieu2 = self.list_lieux[b]
-
-                    if x == 0:
-                        canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,
-                                    dash=(5, 5), fill="green", width=2)
-                    elif x == 1:
-                        canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,
-                                    dash=(5, 5), fill="orange", width=2)
-                    elif x == 2:
-                        canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,
-                                    dash=(5, 5), fill="purple", width=2)
-                    else:
-                        canvas.create_line(lieu1.x, lieu1.y, lieu2.x, lieu2.y,
-                                    dash=(5, 5), fill="pink", width=2)
-
-
-        app.bind("q", action) 
-           # Entrée
-        app.bind("<Escape>", esc)
-
+        app = Tk.Tk()
+        app.title("TSP - meilleures tournées")
+        canvas = Tk.Canvas(app, width=LARGEUR, height=HAUTEUR, bg="white")
         canvas.pack()
-        Zone_de_texte.pack()
+
+        if not self.list_lieux:
+            raise ValueError("Cannot display a graph without places.")
+
+        coordinates = [
+            (lieu.x, lieu.y) for lieu in self.list_lieux
+        ]
+        min_x = min(x for x, _ in coordinates)
+        max_x = max(x for x, _ in coordinates)
+        min_y = min(y for _, y in coordinates)
+        max_y = max(y for _, y in coordinates)
+        margin = 20
+        drawable_width = LARGEUR - 2 * margin
+        drawable_height = HAUTEUR - 2 * margin
+        x_span = max(max_x - min_x, 1)
+        y_span = max(max_y - min_y, 1)
+        scale = min(drawable_width / x_span, drawable_height / y_span)
+        offset_x = (LARGEUR - (max_x - min_x) * scale) / 2
+        offset_y = (HAUTEUR - (max_y - min_y) * scale) / 2
+        canvas_coordinates = [
+            (
+                offset_x + (x - min_x) * scale,
+                offset_y + (y - min_y) * scale,
+            )
+            for x, y in coordinates
+        ]
+
+        best_edges = {
+            frozenset((place, next_place))
+            for place, next_place in zip(self.best_route, self.best_route[1:])
+        }
+        for place, next_place in zip(self.best_route, self.best_route[1:]):
+            x1, y1 = canvas_coordinates[place]
+            x2, y2 = canvas_coordinates[next_place]
+            canvas.create_line(x1, y1, x2, y2, fill="blue", width=3)
+
+        route_colors = ("green", "orange", "purple", "pink", "brown")
+        alternative_line_ids = []
+        for route_index, route in enumerate(self.list_best_route):
+            color = route_colors[route_index % len(route_colors)]
+            for place, next_place in zip(route, route[1:]):
+                if frozenset((place, next_place)) in best_edges:
+                    continue
+                x1, y1 = canvas_coordinates[place]
+                x2, y2 = canvas_coordinates[next_place]
+                line_id = canvas.create_line(
+                    x1, y1, x2, y2, dash=(5, 5), fill=color, width=2
+                )
+                alternative_line_ids.append(line_id)
+        for line_id in alternative_line_ids:
+            canvas.itemconfigure(line_id, state="hidden")
+
+        for place, (x, y) in enumerate(canvas_coordinates):
+            canvas.create_oval(
+                x - 4, y - 4, x + 4, y + 4, fill="red", outline="red"
+            )
+            canvas.create_text(x, y - 10, text=str(place), fill="black")
+
+        details = Tk.Text(app, width=60, height=5)
+        details.insert(
+            "end",
+            f"Meilleure distance : {self.best_distance:.2f}\n"
+            "Appuyez sur q pour afficher/masquer les autres meilleures tournées.\n"
+            "Appuyez sur Échap pour fermer.",
+        )
+        details.configure(state="disabled")
+        details.pack()
+
+        alternatives_visible = False
+
+        def toggle_alternatives(event):
+            nonlocal alternatives_visible
+            alternatives_visible = not alternatives_visible
+            state = "normal" if alternatives_visible else "hidden"
+            for line_id in alternative_line_ids:
+                canvas.itemconfigure(line_id, state=state)
+
+        app.bind_all("<KeyPress-q>", toggle_alternatives)
+        app.bind_all("<KeyPress-Q>", toggle_alternatives)
+        app.bind("<Escape>", lambda event: app.destroy())
         app.mainloop()

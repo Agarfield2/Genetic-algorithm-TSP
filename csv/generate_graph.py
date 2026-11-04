@@ -2,7 +2,7 @@ import csv
 import random
 
 
-DEFAULT_NUMBER_OF_PLACES = 10_000
+DEFAULT_NUMBER_OF_PLACES = 500
 DEFAULT_SEED = None
 
 

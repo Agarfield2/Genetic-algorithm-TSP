@@ -86,6 +86,10 @@ def _create_solver(population_size):
         local_search_attempts=LOCAL_SEARCH_ATTEMPTS,
         fitness_batch_size=FITNESS_BATCH_SIZE,
     )
+
+
+def _run_single_search(graph, generations, population_size):
+    tsp_ga = _create_solver(population_size)
     tsp_ga.init_population(graph=graph)
     best_route, best_distance = tsp_ga.best_solution()
     best_route_list = []
@@ -144,12 +148,12 @@ def main():
     )
 
     worker_count = min(PARALLEL_WORKERS, generations)
+    best_route_list = []
     if worker_count == 1:
         graph.calcul_matrice_cout_od()
         tsp_ga = _create_solver(population_size)
         tsp_ga.init_population(graph=graph)
         best_route, best_distance = tsp_ga.best_solution()
-        best_route_list = []
         print(f"New best at generation 0: distance = {best_distance:.2f}")
         start_time = time.perf_counter()
         for generation in range(generations):
@@ -186,6 +190,15 @@ def main():
         with multiprocessing.Pool(processes=worker_count) as pool:
             results = pool.map(_run_parallel_search, tasks)
         best_route, best_distance = min(results, key=lambda result: result[1])
+        best_route_list = [
+            list(route)
+            for _, (route, _) in sorted(
+                zip(generation_counts, results),
+                key=lambda worker_result: worker_result[0],
+                reverse=True,
+            )
+            if len(route) <= 102
+        ]
         print(
             f"Finished {generations} generations across {worker_count} workers "
             f"in {time.perf_counter() - start_time:.2f}s."
@@ -201,8 +214,13 @@ def main():
     else:
         print(f"Best route contains {len(best_route) - 1} edges; not printed.")
 
-    affichage= Affichage(graph, best_route,best_distance,best_route_list[-3:])#,best_generation,nb_pop
-    affichage.affiche() 
+    routes_for_display = (
+        best_route_list if worker_count > 1 else best_route_list[-3:]
+    )
+    affichage = Affichage(
+        graph, best_route, best_distance, routes_for_display
+    )
+    affichage.affiche()
 
 
 if __name__ == "__main__":
