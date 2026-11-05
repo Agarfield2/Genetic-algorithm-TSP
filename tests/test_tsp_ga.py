@@ -722,7 +722,7 @@ class TSPGATests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertEqual(result.stderr, "")
 
-    def test_main_reports_only_new_best_solutions(self):
+    def test_main_no_display_skips_result_window(self):
         class FakeGraph:
             def __init__(self):
                 self.list_lieux = [None] * 100
@@ -760,8 +760,10 @@ class TSPGATests(unittest.TestCase):
             main, "TSP_GA", FakeAlgorithm
         ), patch.object(
             main, "PARALLEL_WORKERS", 1
-        ), redirect_stdout(output):
-            main.main()
+        ), patch.object(main, "Affichage") as display_class, redirect_stdout(
+            output
+        ):
+            main.main(["--no-display"])
 
         improvements = [
             line
@@ -772,6 +774,7 @@ class TSPGATests(unittest.TestCase):
         self.assertIn("generation 0", improvements[0])
         self.assertIn("generation 2", improvements[1])
         self.assertIn("generation 4", improvements[2])
+        display_class.assert_not_called()
 
 
 if __name__ == "__main__":

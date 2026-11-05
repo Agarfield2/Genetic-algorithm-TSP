@@ -72,10 +72,24 @@ python main.py
 
 Le programme charge le graphe, affiche le nombre de points, prépare les distances et lance l'optimisation. À la fin, il affiche la meilleure distance trouvée et, pour les petites instances, la tournée elle-même. Le chronométrage affiché couvre les générations d'optimisation, pas le chargement du CSV ni l'initialisation de la population.
 
+Pour lancer la recherche sans ouvrir la fenêtre graphique de résultat :
+
+```bash
+python main.py --no-display
+```
+
+Cette option s'applique aussi au mode infini. Sans `--no-display`, le comportement d'affichage habituel est conservé.
+
 Pour lancer la recherche sans limite de générations, avec une population commune évoluant par générations et des descendants produits en parallèle :
 
 ```bash
 python main.py --infinite
+```
+
+Pour lancer ce mode sans ouvrir la fenêtre graphique en direct :
+
+```bash
+python main.py --infinite --no-display
 ```
 
 Les processus lisent la même population de départ de chaque génération. Le processus principal rassemble ensuite leurs descendants, supprime les doublons, complète et évalue la génération suivante. Après plus de 100 générations consécutives sans amélioration globale, le solveur recrée une population et remet le taux de mutation à sa valeur initiale, tout en conservant le meilleur trajet historique. La recherche continue jusqu'à `Ctrl+C`, puis écrit la meilleure tournée dans `best_route.csv` dans le répertoire courant. Ce mode n'a pas de limite de générations, mais la taille de population reste limitée par les paramètres de mémoire configurés dans `main.py`.

@@ -418,7 +418,7 @@ def main(argv=None):
     parser.add_argument(
         "--no-display",
         action="store_true",
-        help="Disable the live window in --infinite mode.",
+        help="Disable the result window in finite mode and live window in --infinite mode.",
     )
     arguments = parser.parse_args(argv if argv is not None else [])
 
@@ -517,10 +517,11 @@ def main(argv=None):
     routes_for_display = (
         best_route_list if worker_count > 1 else best_route_list[-3:]
     )
-    affichage = Affichage(
-        graph, best_route, best_distance, routes_for_display
-    )
-    affichage.affiche()
+    if not arguments.no_display:
+        affichage = Affichage(
+            graph, best_route, best_distance, routes_for_display
+        )
+        affichage.affiche()
 
 
 if __name__ == "__main__":
