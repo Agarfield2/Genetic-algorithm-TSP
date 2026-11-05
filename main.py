@@ -25,6 +25,7 @@ RESTART_AFTER_STAGNATION = 100
 FITNESS_BATCH_SIZE = 16
 PARALLEL_WORKERS = 4
 BEST_ROUTE_CSV = "best_route.csv"
+LIVE_HISTORY_ROUTES = 2
 
 DISTANCE_MATRIX_LIMIT = 250
 NEIGHBOR_COUNT = 16
@@ -265,7 +266,7 @@ def _make_infinite_generation(
 def _open_live_display(graph, route, distance):
     display = Affichage(graph, route, distance)
     try:
-        display.ouvrir_live()
+        display.ouvrir_live(nb_routes_historique=LIVE_HISTORY_ROUTES)
         return display
     except tkinter.TclError as error:
         print(f"Live display unavailable ({error}); continuing without it.")
@@ -509,7 +510,7 @@ def main(argv=None):
         print(f"Best route: {best_route}")
         print(f"Best distance: {best_distance:.2f}")
         if worker_count == 1:
-            print(f"List of 5 last best routes: {best_route_list[-5:]}")
+            print(f"List of {LIVE_HISTORY_ROUTES} last best routes: {best_route_list[-LIVE_HISTORY_ROUTES:]}")
     else:
         print(f"Best route contains {len(best_route) - 1} edges; not printed.")
 

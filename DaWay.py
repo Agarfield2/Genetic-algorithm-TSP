@@ -276,9 +276,10 @@ class Graph:
     def calcul_distance_route(self, route):
         return self.calcul_distances_routes([route])[0]
 
+
 class Affichage:
     MAX_LABELS = 150  # au-delà, on n'écrit plus les numéros des lieux
-
+ 
     def __init__(self, graph, best_route, best_distance, list_best_route=None):
         self.list_lieux = graph.list_lieux
         self.best_route = list(best_route)
@@ -294,11 +295,16 @@ class Affichage:
         self.status = None
         self._route_line = None
         self._canvas_coordinates = []
-
+        # Historique des anciennes meilleures tournées (mode direct).
+        self._history_limit = 5
+        self.historique = []
+        self._history_visible = False
+        self._history_lines = []
+ 
     def _compute_canvas_coordinates(self):
         if not self.list_lieux:
             raise ValueError("Cannot display a graph without places.")
-
+ 
         coordinates = [(lieu.x, lieu.y) for lieu in self.list_lieux]
         min_x = min(x for x, _ in coordinates)
         max_x = max(x for x, _ in coordinates)
@@ -319,18 +325,18 @@ class Affichage:
             )
             for x, y in coordinates
         ]
-
+ 
     # ------------------------------------------------------------------
     # Affichage final (bloquant)
     # ------------------------------------------------------------------
     def affiche(self):
         canvas_coordinates = self._compute_canvas_coordinates()
-
+ 
         app = Tk.Tk()
         app.title("TSP - meilleures tournées")
         canvas = Tk.Canvas(app, width=LARGEUR, height=HAUTEUR, bg="white")
         canvas.pack()
-
+ 
         best_edges = {
             frozenset((place, next_place))
             for place, next_place in zip(self.best_route, self.best_route[1:])
@@ -338,8 +344,8 @@ class Affichage:
         for place, next_place in zip(self.best_route, self.best_route[1:]):
             x1, y1 = canvas_coordinates[place]
             x2, y2 = canvas_coordinates[next_place]
-            canvas.create_line(x1, y1, x2, y2, fill="blue", width=3)
-
+            canvas.create_line(x1, y1, x2, y2, dash=(10, 30), fill="blue", width=3)
+ 
         route_colors = ("green", "orange", "purple", "pink", "brown")
         alternative_line_ids = []
         for route_index, route in enumerate(self.list_best_route):
@@ -355,13 +361,13 @@ class Affichage:
                 alternative_line_ids.append(line_id)
         for line_id in alternative_line_ids:
             canvas.itemconfigure(line_id, state="hidden")
-
+ 
         for place, (x, y) in enumerate(canvas_coordinates):
             canvas.create_oval(
                 x - 4, y - 4, x + 4, y + 4, fill="red", outline="red"
             )
             canvas.create_text(x, y - 10, text=str(place), fill="black")
-
+ 
         details = Tk.Text(app, width=60, height=5)
         details.insert(
             "end",
@@ -371,28 +377,36 @@ class Affichage:
         )
         details.configure(state="disabled")
         details.pack()
-
+ 
         alternatives_visible = False
-
+ 
         def toggle_alternatives(event):
             nonlocal alternatives_visible
             alternatives_visible = not alternatives_visible
             state = "normal" if alternatives_visible else "hidden"
             for line_id in alternative_line_ids:
                 canvas.itemconfigure(line_id, state=state)
-
+ 
         app.bind_all("<KeyPress-q>", toggle_alternatives)
         app.bind_all("<KeyPress-Q>", toggle_alternatives)
         app.bind("<Escape>", lambda event: app.destroy())
         app.mainloop()
-
+ 
     # ------------------------------------------------------------------
     # Affichage en direct (non bloquant)
     # ------------------------------------------------------------------
-    def ouvrir_live(self, generation=0):
-        """Ouvre la fenêtre et affiche la tournée de départ (best_route)."""
+    def ouvrir_live(self, generation=0, nb_routes_historique=2):
+        """Ouvre la fenêtre et affiche la tournée de départ (best_route).
+ 
+        Appuyer sur Q affiche/masque en pointillés les
+        nb_routes_historique dernières meilleures tournées précédentes.
+        """
         self._canvas_coordinates = self._compute_canvas_coordinates()
-
+        self._history_limit = max(0, nb_routes_historique)
+        self.historique = []
+        self._history_visible = False
+        self._history_lines = []
+ 
         self.closed = False
         self.app = Tk.Tk()
         self.app.title("TSP - recherche en direct")
@@ -404,9 +418,11 @@ class Affichage:
         self.status.pack(fill="x", padx=8, pady=4)
         self.app.protocol("WM_DELETE_WINDOW", self._on_close)
         self.app.bind("<Escape>", lambda event: self._on_close())
-
+        self.app.bind_all("<KeyPress-q>", self._basculer_historique)
+        self.app.bind_all("<KeyPress-Q>", self._basculer_historique)
+ 
         self._route_line = self.canvas.create_line(
-            0, 0, 0, 0, fill="blue", width=2
+            0, 0, 0, 0, dash=(10, 30), fill="blue", width=2
         )
         with_labels = len(self._canvas_coordinates) <= self.MAX_LABELS
         for place, (x, y) in enumerate(self._canvas_coordinates):
@@ -415,25 +431,30 @@ class Affichage:
             )
             if with_labels:
                 self.canvas.create_text(x, y - 10, text=str(place))
-
+ 
         return self.mettre_a_jour(
             self.best_route, self.best_distance, generation
         )
-
+ 
     def mettre_a_jour(self, route, distance, generation):
         """Remplace la tournée affichée par la nouvelle meilleure tournée."""
         if self.closed:
             return False
+        if list(route) != self.best_route:
+            if self._history_limit:
+                self.historique.append(self.best_route)
+                if len(self.historique) > self._history_limit:
+                    del self.historique[0]
         self.best_route = list(route)
         self.best_distance = distance
-
+ 
         flat = [
             value
             for place in route
             for value in self._canvas_coordinates[place]
         ]
         self.canvas.coords(self._route_line, *flat)
-
+ 
         gain = 0.0
         if self.initial_distance > 0:
             gain = (
@@ -442,11 +463,46 @@ class Affichage:
         self.status.configure(
             text=(
                 f"Génération {generation} | distance : {distance:.2f} | "
-                f"départ : {self.initial_distance:.2f} | gain : {gain:.1f} %"
+                f"départ : {self.initial_distance:.2f} | gain : {gain:.1f} %\n"
+                f"Q : afficher/masquer les {self._history_limit} "
+                "dernières tournées"
             )
         )
+        if self._history_visible:
+            self._redessiner_historique()
         return self.rafraichir()
-
+ 
+    def _basculer_historique(self, event=None):
+        self._history_visible = not self._history_visible
+        self._redessiner_historique()
+ 
+    def _redessiner_historique(self):
+        """Redessine en pointillés les dernières tournées (la plus récente
+        en premier), sans repasser sur les arêtes de la meilleure tournée."""
+        for line_id in self._history_lines:
+            self.canvas.delete(line_id)
+        self._history_lines = []
+        if not self._history_visible:
+            return
+ 
+        best_edges = {
+            frozenset((place, next_place))
+            for place, next_place in zip(self.best_route, self.best_route[1:])
+        }
+        route_colors = ("green", "orange", "purple", "pink", "brown")
+        for age, route in enumerate(reversed(self.historique)):
+            color = route_colors[age % len(route_colors)]
+            for place, next_place in zip(route, route[1:]):
+                if frozenset((place, next_place)) in best_edges:
+                    continue
+                x1, y1 = self._canvas_coordinates[place]
+                x2, y2 = self._canvas_coordinates[next_place]
+                line_id = self.canvas.create_line(
+                    x1, y1, x2, y2, dash=(5, 5), fill=color, width=2
+                )
+                self.canvas.tag_lower(line_id, self._route_line)
+                self._history_lines.append(line_id)
+ 
     def rafraichir(self):
         """Traite les événements Tk. Renvoie False si la fenêtre est fermée."""
         if self.closed:
@@ -456,7 +512,7 @@ class Affichage:
         except Tk.TclError:
             self.closed = True
         return not self.closed
-
+ 
     def attendre_fermeture(self, message=""):
         """Garde la fenêtre ouverte (bloquant) une fois la recherche finie."""
         if self.closed:
@@ -467,10 +523,11 @@ class Affichage:
             )
         self.app.mainloop()
         self.closed = True
-
+ 
     def _on_close(self):
         self.closed = True
         try:
             self.app.destroy()
         except Tk.TclError:
             pass
+ 
