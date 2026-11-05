@@ -24,7 +24,7 @@ initiale jusqu'au résultat final, voir [`genetique.md`](./genetique.md).
 | Fichier | Responsabilité |
 |---|---|
 | [`main.py`](../main.py) | Paramètres, chargement des données, budget de calcul, lancement séquentiel ou parallèle et affichage du résultat. |
-| [`DaWay.py`](../DaWay.py) | Modèle des lieux et du graphe, chargement CSV, distances, candidats voisins et validation des tournées. |
+| [`DaWay.py`](../DaWay.py) | Classes `Lieu`, `Route` et `Graph`, chargement CSV, distances, candidats voisins et validation des tournées. |
 | [`TSP_GA.py`](../TSP_GA.py) | Classe publique du solveur génétique, paramètres, évaluation des scores et conservation du meilleur résultat. |
 | [`genetic_evolution.py`](../genetic_evolution.py) | Création de la population initiale et construction des générations suivantes. |
 | [`genetic_operators.py`](../genetic_operators.py) | Sélection, croisement, mutation et recherche locale 2-opt. |
@@ -80,7 +80,16 @@ inférieures à un lieu.
 L'indice du lieu dans `Graph.list_lieux` sert d'identifiant entier dans les
 tournées.
 
-### 4.2 `Graph.charger_graph`
+### 4.2 `Route`
+
+`Route` est une sous-classe de `list` qui stocke l'ordre des indices de lieux
+dans une tournée. Elle reste compatible avec les accès et modifications par
+indice utilisés par le solveur génétique. Les alias `route.order` et
+`route.ordre` renvoient la même séquence ; les copies avec `route.copy()` sont
+des objets `Route` indépendants. Les populations, les descendants et la
+meilleure solution du solveur utilisent cette classe.
+
+### 4.3 `Graph.charger_graph`
 
 Le constructeur de `Graph` reçoit le chemin du CSV et les paramètres de
 voisinage et de matrice. `charger_graph()` :
@@ -94,7 +103,7 @@ voisinage et de matrice. `charger_graph()` :
 Après un nouveau chargement, la matrice de distances et les voisins précédents
 sont invalidés.
 
-### 4.3 Matrice et distances à la demande
+### 4.4 Matrice et distances à la demande
 
 `calcul_matrice_cout_od()` prépare les structures de calcul :
 
@@ -123,26 +132,26 @@ vérifie aussi que tous les lieux apparaissent une fois.
 `calcul_distance_route(route)` est le raccourci pour calculer le coût d'une
 seule tournée.
 
-### 4.4 Voisins candidats
+### 4.5 Voisins candidats
 
 `_build_neighbor_candidates()` découpe l'espace des coordonnées en cellules
 spatiales. Pour chaque lieu, elle collecte des lieux des cellules proches,
-échantillonne des cellules trop remplies et, si nécessaire, complète avec un
-échantillon global. Les candidats sont ensuite classés par distance et limités
-à `neighbor_count`.
+échantillonne les cellules trop remplies, puis classe les candidats par
+distance et les limite à `neighbor_count`. Elle n'ajoute pas d'échantillon
+global lorsque les cellules proches fournissent trop peu de candidats.
 
 Cette liste est une approximation pratique des voisins les plus proches, pas
 une recherche exhaustive des voisins exacts. Elle permet à 2-opt d'examiner
 moins de changements sur les grandes instances.
 
-### 4.5 Tournée Hilbert et validation
+### 4.6 Tournée Hilbert et validation
 
 `space_filling_route()` normalise les coordonnées sur une grille entière,
-calcule un indice de courbe de Hilbert avec `_hilbert_index()`, trie les lieux
+calcule un indice de courbe de Hilbert avec `_hilbert_indices()`, trie les lieux
 selon cet indice, puis fait pivoter l'ordre pour commencer par le lieu `0`.
 La courbe de Hilbert tend à placer les points géographiquement proches près les
-uns des autres dans la séquence. La méthode ferme la tournée en ajoutant `0` à
-la fin.
+uns des autres dans la séquence. La méthode renvoie une instance de `Route`,
+fermée en ajoutant `0` à la fin.
 
 `validate_route()` vérifie que la tournée :
 
@@ -157,7 +166,9 @@ Elle lève `ValueError` si la tournée n'est pas valide.
 `TSP_GA` est l'API du solveur. Elle hérite des fonctions d'évolution, des
 opérateurs génétiques et des utilitaires de population définis dans les autres
 modules. Le guide détaillé de son fonctionnement, de l'initialisation à la fin
-de la recherche, se trouve dans [`genetique.md`](./genetique.md).
+de la recherche, se trouve dans [`genetique.md`](./genetique.md). Son
+évaluation reçoit un `Graph`, qui contient les `Lieu` associés aux indices, et
+les solutions conservées sont des objets `Route`.
 
 Le constructeur vérifie les paramètres (tailles positives, taux entre 0 et 1,
 etc.) puis conserve :

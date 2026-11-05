@@ -1,5 +1,7 @@
 import random
 
+from DaWay import Route
+
 MAX_TWO_OPT_CACHE_CITIES = 1_000_000
 
 
@@ -39,17 +41,15 @@ class GeneticOperators:
     def crossover(self, parent1, parent2):
         number_of_internal_places = len(parent1) - 2
         if number_of_internal_places <= 0:
-            return [0, 0]
+            return Route([0, 0])
 
         start = random.randint(1, number_of_internal_places)
         end = random.randint(start, number_of_internal_places)
-        segment = parent1[start:end + 1]
-        child = [None] * (number_of_internal_places + 2)
+        child = Route(parent1)
         child[0] = child[-1] = 0
-        child[start:end + 1] = segment
         selected_places = [False] * (number_of_internal_places + 1)
-        for place in segment:
-            selected_places[place] = True
+        for segment_position in range(start, end + 1):
+            selected_places[parent1[segment_position]] = True
         position = 1
         for place in parent2[1:-1]:
             if selected_places[place]:

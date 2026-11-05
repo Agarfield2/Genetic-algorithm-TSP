@@ -1,5 +1,7 @@
 import random
 
+from DaWay import Route
+
 
 class UniqueRoutePopulation:
     """Helpers for building populations without duplicate undirected cycles."""
@@ -7,7 +9,11 @@ class UniqueRoutePopulation:
     def _random_route(self, number_of_places):
         route = list(range(1, number_of_places))
         random.shuffle(route)
-        return [0, *route, 0]
+        closed_route = Route()
+        closed_route.append(0)
+        closed_route.extend(route)
+        closed_route.append(0)
+        return closed_route
 
     def _unique_route_limit(self, number_of_places):
         if number_of_places < 3:
@@ -38,14 +44,17 @@ class UniqueRoutePopulation:
         route_key = self._route_key(route)
         if route_key in seen_routes:
             return False
-        population.append(list(route))
+        population.append(route if isinstance(route, Route) else Route(route))
         seen_routes.add(route_key)
         return True
 
     def _fill_unique_population(self, population, seen_routes, number_of_places):
         internal_route = list(range(1, number_of_places))
         while len(population) < self.population_size:
-            route = [0, *internal_route, 0]
+            route = Route()
+            route.append(0)
+            route.extend(internal_route)
+            route.append(0)
             self._append_unique_route(population, seen_routes, route)
             if not self._next_permutation(internal_route):
                 break

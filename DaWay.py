@@ -12,6 +12,28 @@ class Lieu:
         self.x = x
         self.y = y
 
+class Route(list):
+
+    __slots__ = ()
+
+    @property
+    def order(self):
+        return self
+
+    @order.setter
+    def order(self, places):
+        self[:] = places
+
+    @property
+    def ordre(self):
+        return self
+
+    @ordre.setter
+    def ordre(self, places):
+        self[:] = places
+
+    def copy(self):
+        return Route(self)
 
 def _hilbert_indices(grid):
     x = grid[:, 0].copy()
@@ -38,7 +60,6 @@ def _hilbert_indices(grid):
 
     return indices
 
-
 class Graph:
     def __init__(
         self,
@@ -56,7 +77,7 @@ class Graph:
         self.neighbor_count = neighbor_count
         self.neighbor_cell_radius = neighbor_cell_radius
         self.csv_path = csv_path
-        self.list_lieux = []
+        self.list_lieux: list[Lieu] = []
         self.matrice_od = None
         self.neighbor_candidates = []
         self._coordinates = np.empty((0, 2), dtype=np.float64)
@@ -186,7 +207,7 @@ class Graph:
         if number_of_places == 0:
             raise ValueError("The graph must contain at least one place.")
         if number_of_places == 1:
-            return [0, 0]
+            return Route([0, 0])
 
         minimums = self._coordinates.min(axis=0)
         spans = self._coordinates.max(axis=0) - minimums
@@ -200,7 +221,9 @@ class Graph:
         ).tolist()
         start = ordered_places.index(0)
         ordered_places = ordered_places[start:] + ordered_places[:start]
-        return [*ordered_places, 0]
+        route = Route(ordered_places)
+        route.append(0)
+        return route
 
     def validate_route(self, route):
         number_of_places = len(self.list_lieux)
@@ -252,9 +275,6 @@ class Graph:
 
     def calcul_distance_route(self, route):
         return self.calcul_distances_routes([route])[0]
-
-class Route:
-    ordre = []
 
 class Affichage:
     MAX_LABELS = 150  # au-delà, on n'écrit plus les numéros des lieux

@@ -36,13 +36,31 @@ Pour changer le nombre de points ou fixer une graine aléatoire afin de reprodui
 
 ## Optimiser les hyperparamètres
 
-Le script [tune_hyperparameters.py](./tune_hyperparameters.py) compare les réglages actuels à des variantes de mutation, de tournoi, d'élitisme et de recherche locale sur 100, 1 000 et 10 000 villes. Il utilise 15 répétitions appariées par configuration par défaut, conserve le même budget de générations et répartit les recherches comme le mode fini normal. Les recherches sont exécutées séquentiellement pour éviter que les configurations se perturbent en se partageant le CPU. Une variante n'est recommandée que si elle gagne au moins 80 % des répétitions appariées, perd au plus 20 % et améliore la médiane des différences de coût ; sinon, les paramètres actuels sont conservés.
+Le script [tune_hyperparameters.py](./tune_hyperparameters.py) compare les réglages actuels à des variantes de population, mutation, tournoi, élitisme, nombre de voisins et rayon de recherche sur 100, 1 000 et 10 000 villes. Les variantes de population conservent le même nombre total d'évaluations en échangeant population contre générations. Il utilise 15 répétitions appariées par configuration par défaut et répartit les recherches comme le mode fini normal. Les recherches d'une répétition s'exécutent en parallèle, comme dans le mode fini. Une variante n'est recommandée que si elle gagne au moins 80 % des répétitions appariées, perd au plus 20 % et améliore la médiane des différences de coût ; ce critère porte sur la qualité, le temps médian étant rapporté séparément.
+
+La comparaison appariée du solveur complet entre 16 et 32 voisins a montré, sur 15 répétitions et 4 processus, des gains médians de coût respectifs de 340, 115 et 20 pour 100, 1 000 et 10 000 villes. La variante à 32 voisins a gagné 14/15, 13/15 et 15/15 répétitions. Ses temps médians étaient de 1,55 s contre 1,35 s, 2,86 s contre 3,07 s, et 5,00 s contre 3,42 s. Le programme utilise donc 32 voisins jusqu'à 1 000 villes et conserve 16 au-delà : à 10 000 villes, le gain de qualité mesuré est faible au regard du surcoût en temps.
 
 ```bash
 python tune_hyperparameters.py
 ```
 
-Le rapport JSON est créé dans `.performance/`, qui est ignoré par Git. La recommandation minimise la médiane de la meilleure distance trouvée ; le temps médian départage uniquement les égalités. Pour réduire le temps d'un essai, utilisez par exemple `--repeats 3`; pour choisir les tailles à tester, utilisez `--cities 100,1000,10000`. Les recommandations mesurées sur les CSV fournis ne garantissent pas le même classement sur d'autres jeux de points.
+Le rapport JSON est créé dans `.performance/`, qui est ignoré par Git. Pour ne tester qu'un sous-ensemble, indiquez `--configurations current,population_half,population_double`. Pour réduire le temps d'un essai, utilisez par exemple `--repeats 3`; pour choisir les tailles à tester, utilisez `--cities 100,1000,10000`. Les recommandations mesurées sur les CSV fournis ne garantissent pas le même classement sur d'autres jeux de points.
+
+## Classe `Route` et performance
+
+`Route`, dans `DaWay.py`, est une sous-classe compacte de `list` : elle conserve les accès par indice attendus par les opérateurs génétiques, expose `order` et `ordre` comme alias vers la séquence, et n'alloue pas de dictionnaire d'attributs par instance. `TSP_GA` utilise explicitement `Graph` et `Route` dans ses annotations ; `Graph.list_lieux` contient des `Lieu`. L'affichage reste indépendant et n'est pas modifié.
+
+Pour limiter le coût de cette classe, `Route` hérite directement du constructeur C de `list` (sans `__init__` Python redondant). Lorsqu'une nouvelle `Route` est ajoutée à une population, elle est conservée plutôt que copiée une deuxième fois ; une liste ordinaire provenant d'un appelant est toujours convertie en copie `Route`. Le croisement construit directement l'enfant sous forme de `Route`.
+
+Le benchmark apparié avant/après la réintroduction initiale a utilisé le solveur complet, 4 processus, 15 répétitions et les mêmes graines sur 100, 1 000 et 10 000 villes. Les distances obtenues sont identiques sur les 15 répétitions à chaque taille. Temps médians de cette première version :
+
+| Villes | Avant (`list`) | Après (`Route`) | Écart mesuré |
+|---:|---:|---:|---:|
+| 100 | 0,88 s | 1,08 s | +23 % |
+| 1 000 | 1,93 s | 2,28 s | +18 % |
+| 10 000 | 2,18 s | 2,33 s | +7 % |
+
+Cette première version ajoutait un surcoût mesuré. Le constructeur redondant et la copie de chaque enfant lors de son ajout ont ensuite été supprimés. Une autre série de 15 répétitions a confirmé les mêmes distances médianes, mais ses temps n'étaient pas directement comparables aux premiers essais : les médianes observées étaient de 1,69 s, 3,12 s et 3,55 s, avec une charge système différente. Un microbenchmark local de création de 20 000 tournées de 1 000 indices a mesuré 0,0399 s pour la classe avec constructeur Python contre 0,0352 s pour la classe optimisée ; la variance des répétitions empêche d'en déduire un gain global du solveur. Les rapports sont dans `.performance/hyperparameter-tuning-20261105-141258.json`, `.performance/hyperparameter-tuning-20261105-141854.json` et `.performance/hyperparameter-tuning-20261105-143335.json`.
 
 ## Lancer le solveur génétique
 
@@ -64,7 +82,7 @@ Les processus lisent la même population de départ de chaque génération. Le p
 
 ## Fonctionnement du projet
 
-- [DaWay.py](./DaWay.py) charge les points depuis le CSV, calcule les distances euclidiennes, valide les tournées et prépare des voisins candidats pour la recherche locale. Le calcul des clés Hilbert est vectorisé et les décalages de cellules des voisins sont pré-calculés. Pour les graphes jusqu'à `DISTANCE_MATRIX_LIMIT`, il peut stocker une matrice complète des distances ; au-delà, les distances sont calculées à la demande afin d'éviter une matrice quadratique.
+- [DaWay.py](./DaWay.py) contient les classes `Lieu`, `Route` et `Graph` : `Route` représente une tournée comme une liste d'indices compatible avec le solveur (`route.order` et `route.ordre` en sont des alias). Le graphe charge les points depuis le CSV, calcule les distances euclidiennes, valide les tournées et prépare les voisins candidats pour la recherche locale. Le calcul des clés Hilbert est vectorisé et les décalages de cellules des voisins sont pré-calculés. Pour les graphes jusqu'à `DISTANCE_MATRIX_LIMIT`, il peut stocker une matrice complète des distances ; au-delà, les distances sont calculées à la demande afin d'éviter une matrice quadratique.
 - [TSP_GA.py](./TSP_GA.py) expose le solveur génétique, ses paramètres, le calcul des scores et le suivi de la meilleure solution.
 - [genetic_evolution.py](./genetic_evolution.py) initialise la population et construit les générations suivantes.
 - [genetic_operators.py](./genetic_operators.py) contient la sélection, le croisement, la mutation et l'amélioration locale 2-opt.
@@ -87,7 +105,7 @@ Les paramètres principaux se trouvent en haut de `main.py` :
 - Le cache des distances d'arêtes inchangées de 2-opt est désactivé au-delà de `MAX_TWO_OPT_CACHE_CITIES` (1 000 000 villes), afin de borner sa mémoire. Avec les 4 processus configurés et une estimation conservatrice de 40 octets par ville et par cache, cela représente au plus environ 160 Mo pour les caches.
 - `FITNESS_BATCH_SIZE` limite la mémoire temporaire utilisée lors de l'évaluation groupée des tournées.
 - `DISTANCE_MATRIX_LIMIT` fixe le seuil d'utilisation d'une matrice complète de distances.
-- `NEIGHBOR_COUNT` et `NEIGHBOR_CELL_RADIUS` règlent la recherche des voisins candidats pour 2-opt. Les essais appariés ont confirmé l'intérêt de 16 voisins et du rayon 2 ; l'échantillonnage global de remplissage a été retiré, car il n'améliorait pas la qualité mesurée.
+- `NEIGHBOR_COUNT` et `NEIGHBOR_CELL_RADIUS` règlent la recherche des voisins candidats pour 2-opt. Le solveur utilise 32 voisins jusqu'à 1 000 villes et 16 au-delà, avec un rayon de cellules de 2. L'échantillonnage global de remplissage a été retiré, car il n'améliorait pas la qualité mesurée.
 - `MAX_ROUTE_EVALUATIONS` et `MAX_POPULATION_ROUTE_CELLS` plafonnent respectivement le travail et la mémoire de la population pour les grands graphes.
 - `PARALLEL_WORKERS` fixe le nombre maximal de processus (4 par défaut, adapté à une machine à 4 cœurs).
 
