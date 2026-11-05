@@ -253,11 +253,12 @@ class Graph:
     def calcul_distance_route(self, route):
         return self.calcul_distances_routes([route])[0]
 
-
 class Route:
     ordre = []
 
 class Affichage:
+    MAX_LABELS = 150  # au-delà, on n'écrit plus les numéros des lieux
+
     def __init__(self, graph, best_route, best_distance, list_best_route=None):
         self.list_lieux = graph.list_lieux
         self.best_route = list(best_route)
@@ -265,19 +266,20 @@ class Affichage:
         self.list_best_route = [
             list(route) for route in (list_best_route or [])
         ]
+        # État utilisé par l'affichage en direct (ouvrir_live).
+        self.initial_distance = best_distance
+        self.closed = False
+        self.app = None
+        self.canvas = None
+        self.status = None
+        self._route_line = None
+        self._canvas_coordinates = []
 
-    def affiche(self):
-        app = Tk.Tk()
-        app.title("TSP - meilleures tournées")
-        canvas = Tk.Canvas(app, width=LARGEUR, height=HAUTEUR, bg="white")
-        canvas.pack()
-
+    def _compute_canvas_coordinates(self):
         if not self.list_lieux:
             raise ValueError("Cannot display a graph without places.")
 
-        coordinates = [
-            (lieu.x, lieu.y) for lieu in self.list_lieux
-        ]
+        coordinates = [(lieu.x, lieu.y) for lieu in self.list_lieux]
         min_x = min(x for x, _ in coordinates)
         max_x = max(x for x, _ in coordinates)
         min_y = min(y for _, y in coordinates)
@@ -290,13 +292,24 @@ class Affichage:
         scale = min(drawable_width / x_span, drawable_height / y_span)
         offset_x = (LARGEUR - (max_x - min_x) * scale) / 2
         offset_y = (HAUTEUR - (max_y - min_y) * scale) / 2
-        canvas_coordinates = [
+        return [
             (
                 offset_x + (x - min_x) * scale,
                 offset_y + (y - min_y) * scale,
             )
             for x, y in coordinates
         ]
+
+    # ------------------------------------------------------------------
+    # Affichage final (bloquant)
+    # ------------------------------------------------------------------
+    def affiche(self):
+        canvas_coordinates = self._compute_canvas_coordinates()
+
+        app = Tk.Tk()
+        app.title("TSP - meilleures tournées")
+        canvas = Tk.Canvas(app, width=LARGEUR, height=HAUTEUR, bg="white")
+        canvas.pack()
 
         best_edges = {
             frozenset((place, next_place))
@@ -352,3 +365,92 @@ class Affichage:
         app.bind_all("<KeyPress-Q>", toggle_alternatives)
         app.bind("<Escape>", lambda event: app.destroy())
         app.mainloop()
+
+    # ------------------------------------------------------------------
+    # Affichage en direct (non bloquant)
+    # ------------------------------------------------------------------
+    def ouvrir_live(self, generation=0):
+        """Ouvre la fenêtre et affiche la tournée de départ (best_route)."""
+        self._canvas_coordinates = self._compute_canvas_coordinates()
+
+        self.closed = False
+        self.app = Tk.Tk()
+        self.app.title("TSP - recherche en direct")
+        self.canvas = Tk.Canvas(
+            self.app, width=LARGEUR, height=HAUTEUR, bg="white"
+        )
+        self.canvas.pack()
+        self.status = Tk.Label(self.app, text="", anchor="w", justify="left")
+        self.status.pack(fill="x", padx=8, pady=4)
+        self.app.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.app.bind("<Escape>", lambda event: self._on_close())
+
+        self._route_line = self.canvas.create_line(
+            0, 0, 0, 0, fill="blue", width=2
+        )
+        with_labels = len(self._canvas_coordinates) <= self.MAX_LABELS
+        for place, (x, y) in enumerate(self._canvas_coordinates):
+            self.canvas.create_oval(
+                x - 3, y - 3, x + 3, y + 3, fill="red", outline="red"
+            )
+            if with_labels:
+                self.canvas.create_text(x, y - 10, text=str(place))
+
+        return self.mettre_a_jour(
+            self.best_route, self.best_distance, generation
+        )
+
+    def mettre_a_jour(self, route, distance, generation):
+        """Remplace la tournée affichée par la nouvelle meilleure tournée."""
+        if self.closed:
+            return False
+        self.best_route = list(route)
+        self.best_distance = distance
+
+        flat = [
+            value
+            for place in route
+            for value in self._canvas_coordinates[place]
+        ]
+        self.canvas.coords(self._route_line, *flat)
+
+        gain = 0.0
+        if self.initial_distance > 0:
+            gain = (
+                (self.initial_distance - distance) / self.initial_distance * 100
+            )
+        self.status.configure(
+            text=(
+                f"Génération {generation} | distance : {distance:.2f} | "
+                f"départ : {self.initial_distance:.2f} | gain : {gain:.1f} %"
+            )
+        )
+        return self.rafraichir()
+
+    def rafraichir(self):
+        """Traite les événements Tk. Renvoie False si la fenêtre est fermée."""
+        if self.closed:
+            return False
+        try:
+            self.app.update()
+        except Tk.TclError:
+            self.closed = True
+        return not self.closed
+
+    def attendre_fermeture(self, message=""):
+        """Garde la fenêtre ouverte (bloquant) une fois la recherche finie."""
+        if self.closed:
+            return
+        if message:
+            self.status.configure(
+                text=self.status.cget("text") + "\n" + message
+            )
+        self.app.mainloop()
+        self.closed = True
+
+    def _on_close(self):
+        self.closed = True
+        try:
+            self.app.destroy()
+        except Tk.TclError:
+            pass

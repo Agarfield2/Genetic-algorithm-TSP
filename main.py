@@ -5,6 +5,7 @@ import multiprocessing
 import random
 import sys
 import time
+import tkinter
 
 import numpy as np
 
@@ -246,9 +247,22 @@ def _make_infinite_generation(
             f"best distance = {current_best_distance:.2f}"
         )
     _restart_stagnated_population(graph, solver, generation)
+    # Le redémarrage peut lui-même trouver une meilleure tournée : on
+    # compare donc la meilleure distance *après* le redémarrage.
+    return solver._best_distance < previous_best_distance
 
 
-def _run_infinite_search(graph, number_of_places):
+def _open_live_display(graph, route, distance):
+    display = Affichage(graph, route, distance)
+    try:
+        display.ouvrir_live()
+        return display
+    except tkinter.TclError as error:
+        print(f"Live display unavailable ({error}); continuing without it.")
+        return None
+
+
+def _run_infinite_search(graph, number_of_places, show_display=True):
     requested_population_size = _infinite_population_size(number_of_places)
     solver = _create_solver(requested_population_size)
     solver.init_population(graph=graph)
@@ -278,6 +292,7 @@ def _run_infinite_search(graph, number_of_places):
     )
     worker_count = min(PARALLEL_WORKERS, population_size)
     generation = 0
+    display = None
 
     try:
         with multiprocessing.Pool(
@@ -292,9 +307,14 @@ def _run_infinite_search(graph, number_of_places):
                 _solver_parameters(population_size, solver.elite_count),
             ),
         ) as pool:
+            # La fenêtre est créée après le Pool : évite de forker un
+            # processus qui contient déjà un interpréteur Tk (Linux).
+            if show_display:
+                display = _open_live_display(graph, best_route, best_distance)
+
             while True:
                 generation += 1
-                _make_infinite_generation(
+                improved = _make_infinite_generation(
                     graph,
                     solver,
                     pool,
@@ -303,6 +323,15 @@ def _run_infinite_search(graph, number_of_places):
                     worker_count,
                     generation,
                 )
+                if display is not None:
+                    if improved:
+                        route, distance = solver.best_solution()
+                        display.mettre_a_jour(route, distance, generation)
+                    else:
+                        display.rafraichir()
+                    if display.closed:
+                        print("\nDisplay window closed; stopping search.")
+                        break
     except KeyboardInterrupt:
         print("\nStopping infinite search.")
 
@@ -312,6 +341,13 @@ def _run_infinite_search(graph, number_of_places):
         f"Best distance: {best_solution[1]:.2f}; "
         f"saved to {BEST_ROUTE_CSV}"
     )
+    if display is not None and not display.closed:
+        try:
+            display.attendre_fermeture(
+                "Recherche terminée - fermez la fenêtre (Échap)."
+            )
+        except KeyboardInterrupt:
+            pass
     return best_solution
 
 
@@ -367,6 +403,11 @@ def main(argv=None):
         action="store_true",
         help="Run an unbounded cooperative search until Ctrl+C.",
     )
+    parser.add_argument(
+        "--no-display",
+        action="store_true",
+        help="Disable the live window in --infinite mode.",
+    )
     arguments = parser.parse_args(argv if argv is not None else [])
 
     if PARALLEL_WORKERS < 1:
@@ -381,7 +422,11 @@ def main(argv=None):
 
     if arguments.infinite:
         graph.calcul_matrice_cout_od()
-        return _run_infinite_search(graph, number_of_places)
+        return _run_infinite_search(
+            graph,
+            number_of_places,
+            show_display=not arguments.no_display,
+        )
 
     population_size, generations = get_solver_budget(number_of_places)
     print(
