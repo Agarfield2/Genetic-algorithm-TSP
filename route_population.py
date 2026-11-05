@@ -23,6 +23,12 @@ class UniqueRoutePopulation:
 
     @staticmethod
     def _route_key(route):
+        if len(route) > 3:
+            if route[1] < route[-2]:
+                return tuple(route)
+            if route[1] > route[-2]:
+                return (route[0], *reversed(route[1:-1]), route[-1])
+
         forward = tuple(route)
         reverse = (route[0], *reversed(route[1:-1]), route[-1])
         # A cycle and its reverse describe the same undirected TSP route.

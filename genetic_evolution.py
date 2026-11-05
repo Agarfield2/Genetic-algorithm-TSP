@@ -60,7 +60,6 @@ class GeneticEvolution(UniqueRoutePopulation, GeneticOperators):
     def reproduction(self, graph):
         self._ensure_fitness(graph)
         previous_best_distance = self._best_distance
-        diversity = self._population_diversity()
         mutation_rate = self._adaptive_mutation_rate()
 
         ranked_indices = sorted(
@@ -74,46 +73,14 @@ class GeneticEvolution(UniqueRoutePopulation, GeneticOperators):
         new_fitness = [self._fitness[index] for index in ranked_indices[:elite_count]]
 
         child_count = len(self.population) - elite_count
-        immigrant_count = 0
-        if (
-            child_count
-            and self.generations_without_improvement >= self.stagnation_generations
-            and (
-                self.generations_without_improvement
-                % self.stagnation_generations
-                == 0
-                or diversity < self.min_diversity
-            )
-        ):
-            immigrant_count = min(
-                child_count,
-                max(1, int(child_count * self.immigrant_fraction)),
-            )
-
-        offspring_count = child_count - immigrant_count
-        for _ in range(offspring_count):
+        for _ in range(child_count):
             for _ in range(10):
                 parent1 = self.selection()
                 parent2 = self.selection()
                 child = self.crossover(parent1, parent2)
                 child = self.mutation(child, mutation_rate)
-                if (
-                    self.local_search_attempts
-                    and random.random() < self.local_search_rate
-                ):
-                    child = self.two_opt(
-                        child,
-                        graph,
-                        self.local_search_attempts,
-                    )
                 if self._append_unique_route(new_population, seen_routes, child):
                     break
-
-        for _ in range(immigrant_count * 10):
-            if len(new_population) >= self.population_size:
-                break
-            immigrant = self._random_route(len(graph.list_lieux))
-            self._append_unique_route(new_population, seen_routes, immigrant)
 
         # Enumerate any remaining cycles if random offspring produced duplicates.
         self._fill_unique_population(
