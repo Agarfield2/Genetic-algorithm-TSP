@@ -1,5 +1,7 @@
 import random
 
+MAX_TWO_OPT_CACHE_CITIES = 1_000_000
+
 
 class GeneticOperators:
     """Selection, crossover, mutation, and local-search operations for TSP_GA."""
@@ -45,10 +47,12 @@ class GeneticOperators:
         child = [None] * (number_of_internal_places + 2)
         child[0] = child[-1] = 0
         child[start:end + 1] = segment
-        selected_places = set(segment)
+        selected_places = [False] * (number_of_internal_places + 1)
+        for place in segment:
+            selected_places[place] = True
         position = 1
         for place in parent2[1:-1]:
-            if place in selected_places:
+            if selected_places[place]:
                 continue
             if position == start:
                 position = end + 1
@@ -66,6 +70,11 @@ class GeneticOperators:
         for position, place in enumerate(route[:-1]):
             positions[place] = position
 
+        edge_distances = (
+            [None] * number_of_places
+            if number_of_places <= MAX_TWO_OPT_CACHE_CITIES
+            else None
+        )
         best_delta = 0.0
         best_i = None
         best_j = None
@@ -73,16 +82,32 @@ class GeneticOperators:
             i = random.randrange(0, number_of_places - 2)
             first = route[i]
             second = route[i + 1]
+            first_edge_distance = (
+                edge_distances[i] if edge_distances is not None else None
+            )
+            if first_edge_distance is None:
+                first_edge_distance = graph.distance_between(first, second)
+                if edge_distances is not None:
+                    edge_distances[i] = first_edge_distance
+
             for third in candidates[first]:
                 j = positions[third]
                 if j <= i + 1 or j >= number_of_places:
                     continue
                 fourth = route[j + 1]
+                second_edge_distance = (
+                    edge_distances[j] if edge_distances is not None else None
+                )
+                if second_edge_distance is None:
+                    second_edge_distance = graph.distance_between(third, fourth)
+                    if edge_distances is not None:
+                        edge_distances[j] = second_edge_distance
+
                 delta = (
                     graph.distance_between(first, third)
                     + graph.distance_between(second, fourth)
-                    - graph.distance_between(first, second)
-                    - graph.distance_between(third, fourth)
+                    - first_edge_distance
+                    - second_edge_distance
                 )
                 if delta < best_delta:
                     best_delta = delta

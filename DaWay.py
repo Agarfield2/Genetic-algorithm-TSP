@@ -4,8 +4,6 @@ import random
 import numpy as np
 
 MAX_DISTANCE_MATRIX_POINTS = 250
-LARGEUR = 800
-HAUTEUR = 600
 
 
 class Lieu:
@@ -14,20 +12,30 @@ class Lieu:
         self.y = y
 
 
-def _hilbert_index(x, y, bits=16):
-    index = 0
+def _hilbert_indices(grid):
+    x = grid[:, 0].copy()
+    y = grid[:, 1].copy()
+    indices = np.zeros(len(grid), dtype=np.int64)
+    bits = 16
+    maximum = (1 << bits) - 1
     scale = 1 << (bits - 1)
+
     while scale:
-        x_bit = 1 if x & scale else 0
-        y_bit = 1 if y & scale else 0
-        index += scale * scale * ((3 * x_bit) ^ y_bit)
-        if y_bit == 0:
-            if x_bit:
-                x = (1 << bits) - 1 - x
-                y = (1 << bits) - 1 - y
-            x, y = y, x
+        x_bit = (x & scale) != 0
+        y_bit = (y & scale) != 0
+        indices += scale * scale * (
+            (3 * x_bit.astype(np.int64)) ^ y_bit.astype(np.int64)
+        )
+        swap = ~y_bit
+        reflect = swap & x_bit
+        x = np.where(reflect, maximum - x, x)
+        y = np.where(reflect, maximum - y, y)
+        previous_x = x.copy()
+        x = np.where(swap, y, x)
+        y = np.where(swap, previous_x, y)
         scale >>= 1
-    return index
+
+    return indices
 
 
 class Graph:
@@ -36,18 +44,16 @@ class Graph:
         matrix_limit=MAX_DISTANCE_MATRIX_POINTS,
         neighbor_count=16,
         neighbor_cell_radius=2,
-        neighbor_sample_size=128,
         csv_path=None,
     ):
         if matrix_limit < 0:
             raise ValueError("matrix_limit cannot be negative.")
-        if neighbor_count < 0 or neighbor_cell_radius < 0 or neighbor_sample_size < 0:
+        if neighbor_count < 0 or neighbor_cell_radius < 0:
             raise ValueError("Neighbor search settings cannot be negative.")
 
         self.matrix_limit = matrix_limit
         self.neighbor_count = neighbor_count
         self.neighbor_cell_radius = neighbor_cell_radius
-        self.neighbor_sample_size = neighbor_sample_size
         self.csv_path = csv_path
         self.list_lieux = []
         self.matrice_od = None
@@ -122,50 +128,38 @@ class Graph:
             cells.setdefault(cell, []).append(index)
 
         candidate_limit = max(self.neighbor_count * 8, self.neighbor_count)
+        cell_offsets = []
+        for radius in range(self.neighbor_cell_radius + 1):
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    if radius and max(abs(dx), abs(dy)) != radius:
+                        continue
+                    cell_offsets.append((dx, dy))
+
         for index, (x, y) in enumerate(coordinates):
             cell_x, cell_y = point_cells[index]
             candidates = set()
-            for radius in range(self.neighbor_cell_radius + 1):
-                for dx in range(-radius, radius + 1):
-                    for dy in range(-radius, radius + 1):
-                        if radius and max(abs(dx), abs(dy)) != radius:
-                            continue
-                        bucket = cells.get((cell_x + dx, cell_y + dy), ())
-                        remaining = candidate_limit - len(candidates)
-                        if remaining <= 0:
-                            break
-                        if len(bucket) <= remaining + 1:
-                            available = [
-                                place for place in bucket if place != index
-                            ]
-                        else:
-                            available = [
-                                place
-                                for place in random.sample(
-                                    bucket,
-                                    min(len(bucket), remaining + 1),
-                                )
-                                if place != index
-                            ]
-                        candidates.update(available)
-                    if len(candidates) >= candidate_limit:
-                        break
-                if len(candidates) >= candidate_limit:
+            for dx, dy in cell_offsets:
+                bucket = cells.get((cell_x + dx, cell_y + dy), ())
+                remaining = candidate_limit - len(candidates)
+                if remaining <= 0:
                     break
-
-            if len(candidates) < self.neighbor_count:
-                fallback_count = min(
-                    self.neighbor_sample_size,
-                    number_of_places - len(candidates) - 1,
-                )
-                if fallback_count > 0:
-                    candidates.update(
+                if len(bucket) <= remaining + 1:
+                    available = [
+                        place for place in bucket if place != index
+                    ]
+                else:
+                    available = [
                         place
                         for place in random.sample(
-                            range(number_of_places), fallback_count
+                            bucket,
+                            min(len(bucket), remaining + 1),
                         )
                         if place != index
-                    )
+                    ]
+                candidates.update(available)
+                if len(candidates) >= candidate_limit:
+                    break
 
             ranked = sorted(
                 candidates,
@@ -199,31 +193,13 @@ class Graph:
         grid = np.rint(
             (self._coordinates - minimums) / safe_spans * ((1 << 16) - 1)
         ).astype(np.int64)
-        ordered_places = sorted(
-            range(number_of_places),
-            key=lambda place: (
-                _hilbert_index(int(grid[place, 0]), int(grid[place, 1])),
-                place,
-            ),
-        )
+        hilbert_indices = _hilbert_indices(grid)
+        ordered_places = np.lexsort(
+            (np.arange(number_of_places), hilbert_indices)
+        ).tolist()
         start = ordered_places.index(0)
         ordered_places = ordered_places[start:] + ordered_places[:start]
         return [*ordered_places, 0]
-
-    def plus_proche_voisin(self, lieu, visites):
-        visited = visites if isinstance(visites, set) else set(visites)
-        nearest_lieu = None
-        min_distance = float("inf")
-        for index, other_lieu in enumerate(self.list_lieux):
-            if index not in visited:
-                distance = np.hypot(
-                    lieu.x - other_lieu.x,
-                    lieu.y - other_lieu.y,
-                )
-                if distance < min_distance:
-                    nearest_lieu = index
-                    min_distance = distance
-        return nearest_lieu
 
     def validate_route(self, route):
         number_of_places = len(self.list_lieux)
@@ -275,19 +251,3 @@ class Graph:
 
     def calcul_distance_route(self, route):
         return self.calcul_distances_routes([route])[0]
-
-
-class Route:
-    ordre = []
-
-
-class Affichage:
-    def affiche(self):
-        from tkinter import Canvas, Text, Tk
-
-        app = Tk()
-        canvas = Canvas(app, width=LARGEUR, height=HAUTEUR)
-        zone_de_texte = Text(app, width=50, height=50)
-        canvas.pack()
-        zone_de_texte.pack()
-        app.mainloop()

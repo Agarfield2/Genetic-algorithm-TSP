@@ -70,15 +70,6 @@ def generate_offspring(task):
             parent2 = _solver.selection()
             child = _solver.crossover(parent1, parent2)
             child = _solver.mutation(child, mutation_rate)
-            if (
-                _solver.local_search_attempts
-                and random.random() < _solver.local_search_rate
-            ):
-                child = _solver.two_opt(
-                    child,
-                    _graph,
-                    _solver.local_search_attempts,
-                )
             if _solver._append_unique_route(offspring, seen_routes, child):
                 break
 

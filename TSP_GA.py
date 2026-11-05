@@ -15,10 +15,6 @@ class TSP_GA(GeneticEvolution):
         tournament_size,
         max_mutation_rate,
         stagnation_generations,
-        immigrant_fraction,
-        min_diversity,
-        local_search_rate,
-        local_search_attempts,
         fitness_batch_size,
     ):
         if population_size < 1:
@@ -33,14 +29,6 @@ class TSP_GA(GeneticEvolution):
             raise ValueError("tournament_size must be greater than zero.")
         if stagnation_generations < 1:
             raise ValueError("stagnation_generations must be greater than zero.")
-        if not 0 <= immigrant_fraction <= 1:
-            raise ValueError("immigrant_fraction must be between zero and one.")
-        if not 0 <= min_diversity <= 1:
-            raise ValueError("min_diversity must be between zero and one.")
-        if not 0 <= local_search_rate <= 1:
-            raise ValueError("local_search_rate must be between zero and one.")
-        if local_search_attempts < 0:
-            raise ValueError("local_search_attempts cannot be negative.")
         if fitness_batch_size < 1:
             raise ValueError("fitness_batch_size must be greater than zero.")
 
@@ -50,10 +38,6 @@ class TSP_GA(GeneticEvolution):
         self.max_mutation_rate = max_mutation_rate
         self.tournament_size = tournament_size
         self.stagnation_generations = stagnation_generations
-        self.immigrant_fraction = immigrant_fraction
-        self.min_diversity = min_diversity
-        self.local_search_rate = local_search_rate
-        self.local_search_attempts = local_search_attempts
         self.fitness_batch_size = fitness_batch_size
 
         self.population = []
@@ -101,21 +85,3 @@ class TSP_GA(GeneticEvolution):
         return self.mutation_rate + (
             self.max_mutation_rate - self.mutation_rate
         ) * progress
-
-    def _population_diversity(self):
-        if not self.population:
-            return 0.0
-        route_length = len(self.population[0]) - 2
-        if route_length <= 0:
-            return 1.0
-
-        sample_count = min(16, route_length)
-        positions = {
-            1 + (index * (route_length - 1) // max(sample_count - 1, 1))
-            for index in range(sample_count)
-        }
-        signatures = {
-            tuple(route[position] for position in positions)
-            for route in self.population
-        }
-        return len(signatures) / len(self.population)

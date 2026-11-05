@@ -12,9 +12,9 @@ lieu `0`. Pour quatre lieux, une tournée possible est `[0, 2, 1, 3, 0]`. Son
 coût est la somme des distances de chaque paire de lieux consécutifs, retour au
 départ compris.
 
-Le programme utilise plusieurs heuristiques et un algorithme génétique. Ce
-sont des méthodes de recherche : elles produisent de bonnes solutions, mais
-ne garantissent généralement pas de trouver l'optimum global.
+Le programme utilise un algorithme génétique et des heuristiques de recherche
+locale. Ces méthodes produisent de bonnes solutions, mais ne garantissent pas
+de trouver l'optimum global.
 
 Pour le déroulement pas à pas de l'algorithme génétique, de la population
 initiale jusqu'au résultat final, voir [`genetique.md`](./genetique.md).
@@ -30,14 +30,12 @@ initiale jusqu'au résultat final, voir [`genetique.md`](./genetique.md).
 | [`genetic_operators.py`](../genetic_operators.py) | Sélection, croisement, mutation et recherche locale 2-opt. |
 | [`route_population.py`](../route_population.py) | Création de tournées et déduplication des cycles. |
 | [`parallel_evolution.py`](../parallel_evolution.py) | Production parallèle des descendants à partir d'une population partagée en mode infini. |
-| [`nearest_insertion.py`](../nearest_insertion.py) | Heuristique Nearest Insertion exécutable séparément. |
 | [`csv/generate_graph.py`](../csv/generate_graph.py) | Génération d'un jeu de points aléatoires au format CSV. |
-| [`test_heuristique.py`](../test_heuristique.py) | Implémentations de comparaison de plusieurs heuristiques et benchmark des exemples. |
 | [`tests/test_tsp_ga.py`](../tests/test_tsp_ga.py) | Tests unitaires du graphe, du solveur et du programme principal. |
 | [`requirements.txt`](../requirements.txt) | Dépendances Python externes ; actuellement NumPy. |
 
-`multiprocessing`, `csv`, `random`, `time`, `argparse`, `itertools` et `tkinter`
-sont fournis par Python. NumPy est la seule bibliothèque externe déclarée dans
+`multiprocessing`, `csv`, `random`, `time`, `argparse` et `itertools` sont
+fournis par Python. NumPy est la seule bibliothèque externe déclarée dans
 `requirements.txt`.
 
 ## 3. Format des données et commandes courantes
@@ -105,7 +103,9 @@ sont invalidés.
 - au-delà de cette limite, la matrice complète n'est pas allouée et les
   distances seront calculées à la demande ;
 - dans les deux cas, la méthode prépare les voisins candidats utilisés par la
-  recherche 2-opt.
+  recherche 2-opt. Cette recherche s'appuie uniquement sur les cellules
+  locales ; aucun échantillon global n'est ajouté si elles fournissent trop
+  peu de candidats.
 
 La matrice complète prend une mémoire proportionnelle au carré du nombre de
 lieux. Éviter cette matrice est important pour les grandes instances.
@@ -151,19 +151,6 @@ la fin.
 - visite chaque indice du graphe une fois avant le retour.
 
 Elle lève `ValueError` si la tournée n'est pas valide.
-
-### 4.6 Autres classes de `DaWay.py`
-
-`plus_proche_voisin()` cherche le lieu non visité le plus proche d'un objet
-`Lieu`. C'est une méthode de support, distincte de l'heuristique
-`nearest_neighbor_tour()` du benchmark.
-
-`Route` est actuellement un simple conteneur avec un attribut `ordre` de
-classe ; le solveur principal ne s'en sert pas.
-
-`Affichage.affiche()` ouvre une fenêtre Tkinter rudimentaire avec un canvas,
-une zone de texte et une boucle d'événements. Elle n'est pas appelée par
-`main.py` et ne constitue pas encore l'interface d'affichage des tournées.
 
 ## 5. Solveur génétique — `TSP_GA.py`
 
@@ -252,81 +239,13 @@ cette réinitialisation.
 Il n'y a pas de limite de générations dans ce mode, mais la taille de la
 population est limitée par `POPULATION_SIZE` et `MAX_POPULATION_ROUTE_CELLS`
 pour contrôler la mémoire. À l'interruption par `Ctrl+C`, le meilleur trajet,
-ses coordonnées et sa distance sont écrits dans `best_route.csv`. Ce mode ne
-pilote pas d'affichage Tkinter.
+ses coordonnées et sa distance sont écrits dans `best_route.csv`.
 
 La condition `if __name__ == "__main__":` empêche le lancement automatique de
 `main()` lors d'un import. C'est également nécessaire au bon fonctionnement du
 `multiprocessing` avec le mode de démarrage Windows.
 
-## 7. Heuristique Nearest Insertion — `nearest_insertion.py`
-
-`nearest_insertion(graph)` construit un cycle fermé :
-
-1. commence par le lieu `0` et son plus proche voisin ;
-2. maintient, pour chaque lieu non visité, sa distance au lieu déjà visité le
-   plus proche ;
-3. choisit le lieu dont cette distance est la plus faible ;
-4. l'insère à la position du cycle qui augmente le moins la distance totale ;
-5. met à jour les distances des lieux restants.
-
-Le script autonome charge le CSV défini par son propre `CSV_PATH`, prépare le
-graphe, chronomètre la construction, vérifie la route et affiche la distance et
-la tournée. Il ne fait pas partie de la boucle du solveur génétique.
-
-## 8. Comparaison des heuristiques — `test_heuristique.py`
-
-Ce fichier contient des implémentations de benchmark pour :
-
-1. **Greedy** : trie toutes les arêtes par longueur et choisit les plus courtes
-   tant qu'elles ne donnent pas un degré supérieur à deux ou ne ferment pas un
-   sous-cycle prématuré ; termine ainsi un cycle hamiltonien.
-2. **Nearest Neighbor** : depuis `0`, visite à chaque étape le lieu non visité
-   le plus proche.
-3. **Nearest Insertion** : réutilise la fonction du module dédié ci-dessus.
-4. **Cheapest Insertion** : choisit globalement le couple lieu/arête qui donne
-   la plus faible augmentation immédiate de longueur.
-5. **Random Insertion** : mélange les lieux non visités avec une graine, puis
-   insère chaque lieu à son emplacement le moins coûteux.
-6. **Farthest Insertion** : prend le lieu le plus éloigné du cycle courant et
-   l'insère là où l'augmentation du coût est minimale.
-7. **Christofides** : calcule un arbre couvrant minimal avec Prim, apparie les
-   sommets de degré impair, construit un circuit eulérien et le raccourcit en
-   sautant les visites répétées.
-8. **2-opt** : recherche locale best-improvement sur toutes les paires d'arêtes
-   jusqu'à ce qu'aucune amélioration ne soit trouvée.
-9. **3-opt** : coupe trois arêtes et teste plusieurs ordres et orientations
-   des segments. Le test est exhaustif jusqu'à 30 villes ; au-delà, il
-   échantillonne au plus 5 000 triples et limite à 100 améliorations.
-10. **Lin-Kernighan** : version de recherche séquentielle à profondeur,
-    candidats et nombre de nœuds explorés limités par les constantes du
-    fichier.
-11. **Chained Lin-Kernighan** : répète cette recherche après des perturbations
-    de type double-bridge et conserve le meilleur des résultats.
-
-Les implémentations Lin-Kernighan du fichier sont des versions expérimentales
-bornées pour le benchmark, pas une bibliothèque ou une implémentation de
-référence certifiée de toutes les variantes canoniques. De même, Christofides
-utilise un appariement parfait exact par programmation dynamique sur masque de
-bits ; il est refusé si l'arbre a plus de 20 sommets impairs, car son coût
-croît exponentiellement. Dans ce cas le benchmark affiche `SKIPPED` au lieu
-d'échouer ou de donner un faux résultat.
-
-Le benchmark essaie les CSV de 5, 20 et 100 lieux, valide chaque tournée et
-affiche son coût et son temps. Les temps dépendent de la machine ; ces exemples
-ne suffisent pas à établir un classement général.
-
-Commandes :
-
-```bash
-python test_heuristique.py
-python -m unittest test_heuristique -v
-```
-
-La première commande affiche le benchmark. La seconde lance les tests unitaires
-du fichier.
-
-## 9. Tests du projet
+## 7. Tests du projet
 
 Depuis la racine du dépôt :
 

@@ -13,7 +13,7 @@ from TSP_GA import TSP_GA
 from parallel_evolution import generate_offspring, initialize_worker
 
 GENERATIONS = 1000
-CSV_PATH = "csv/graph_1000.csv"
+CSV_PATH = "csv/graph_100.csv"
 POPULATION_SIZE = 100
 ELITE_COUNT = 5
 MUTATION_RATE = 0.01
@@ -21,18 +21,13 @@ MAX_MUTATION_RATE = 0.10
 TOURNAMENT_SIZE = 5
 STAGNATION_GENERATIONS = 25
 RESTART_AFTER_STAGNATION = 100
-IMMIGRANT_FRACTION = 0.10
-MIN_DIVERSITY = 0.20
-LOCAL_SEARCH_RATE = 0.05
-LOCAL_SEARCH_ATTEMPTS = 8
 FITNESS_BATCH_SIZE = 16
-PARALLEL_WORKERS = 25
+PARALLEL_WORKERS = 4
 BEST_ROUTE_CSV = "best_route.csv"
 
 DISTANCE_MATRIX_LIMIT = 250
 NEIGHBOR_COUNT = 16
 NEIGHBOR_CELL_RADIUS = 2
-NEIGHBOR_SAMPLE_SIZE = 128
 MAX_ROUTE_EVALUATIONS = 20_000_000
 MAX_POPULATION_ROUTE_CELLS = 1_000_000
 
@@ -73,7 +68,6 @@ def _create_graph():
         matrix_limit=DISTANCE_MATRIX_LIMIT,
         neighbor_count=NEIGHBOR_COUNT,
         neighbor_cell_radius=NEIGHBOR_CELL_RADIUS,
-        neighbor_sample_size=NEIGHBOR_SAMPLE_SIZE,
         csv_path=CSV_PATH,
     )
 
@@ -88,10 +82,6 @@ def _solver_parameters(population_size, elite_count=None):
         "max_mutation_rate": MAX_MUTATION_RATE,
         "tournament_size": TOURNAMENT_SIZE,
         "stagnation_generations": STAGNATION_GENERATIONS,
-        "immigrant_fraction": IMMIGRANT_FRACTION,
-        "min_diversity": MIN_DIVERSITY,
-        "local_search_rate": LOCAL_SEARCH_RATE,
-        "local_search_attempts": LOCAL_SEARCH_ATTEMPTS,
         "fitness_batch_size": FITNESS_BATCH_SIZE,
     }
 
@@ -168,7 +158,6 @@ def _make_infinite_generation(
     generation,
 ):
     previous_best_distance = solver._best_distance
-    diversity = solver._population_diversity()
     mutation_rate = solver._adaptive_mutation_rate()
 
     ranked_indices = sorted(
@@ -183,25 +172,7 @@ def _make_infinite_generation(
     seen_routes = {solver._route_key(route) for route in new_population}
 
     child_count = len(solver.population) - elite_count
-    immigrant_count = 0
-    if (
-        child_count
-        and solver.generations_without_improvement
-        >= solver.stagnation_generations
-        and (
-            solver.generations_without_improvement
-            % solver.stagnation_generations
-            == 0
-            or diversity < solver.min_diversity
-        )
-    ):
-        immigrant_count = min(
-            child_count,
-            max(1, int(child_count * solver.immigrant_fraction)),
-        )
-
-    offspring_count = child_count - immigrant_count
-    if offspring_count:
+    if child_count:
         population_view = np.frombuffer(
             population_buffer,
             dtype=np.int64,
@@ -210,7 +181,7 @@ def _make_infinite_generation(
         population_view[:] = solver.population
         fitness_view[:] = solver._fitness
         offspring_counts = _split_generations(
-            offspring_count,
+            child_count,
             worker_count,
         )
         tasks = [
@@ -233,12 +204,6 @@ def _make_infinite_generation(
                     seen_routes,
                     route,
                 )
-
-    for _ in range(immigrant_count * 10):
-        if len(new_population) >= solver.population_size:
-            break
-        immigrant = solver._random_route(len(graph.list_lieux))
-        solver._append_unique_route(new_population, seen_routes, immigrant)
 
     solver._fill_unique_population(
         new_population,
