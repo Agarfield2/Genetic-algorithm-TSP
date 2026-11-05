@@ -1,5 +1,6 @@
 import random
 
+from DaWay import Route
 from genetic_operators import GeneticOperators
 from route_population import UniqueRoutePopulation
 
@@ -39,7 +40,7 @@ class GeneticEvolution(UniqueRoutePopulation, GeneticOperators):
                 2 / max(1, number_of_places - 1),
             )
             for _ in range(seeded_count - 1):
-                route = list(seed_route)
+                route = seed_route.copy()
                 self.mutation(route, mutation_rate=seed_mutation_rate)
                 self._append_unique_route(self.population, seen_routes, route)
 
@@ -67,7 +68,8 @@ class GeneticEvolution(UniqueRoutePopulation, GeneticOperators):
         )
         elite_count = min(self.elite_count, len(self.population))
         new_population = [
-            list(self.population[index]) for index in ranked_indices[:elite_count]
+            Route(self.population[index])
+            for index in ranked_indices[:elite_count]
         ]
         seen_routes = {self._route_key(route) for route in new_population}
         new_fitness = [self._fitness[index] for index in ranked_indices[:elite_count]]

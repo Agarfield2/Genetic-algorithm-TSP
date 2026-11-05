@@ -1,3 +1,4 @@
+from DaWay import Route
 from genetic_evolution import GeneticEvolution
 
 POP_SIZE = 100
@@ -70,12 +71,12 @@ class TSP_GA(GeneticEvolution):
         if best_distance < self._best_distance:
             self._best_distance = best_distance
             # Keep a snapshot because population routes can change later.
-            self._best_route = list(self.population[best_index])
+            self._best_route = Route(self.population[best_index])
 
     def best_solution(self):
         if self._best_route is None:
             raise ValueError("The population has no evaluated solutions.")
-        return list(self._best_route), self._best_distance
+        return self._best_route.copy(), self._best_distance
 
     def _adaptive_mutation_rate(self):
         progress = min(

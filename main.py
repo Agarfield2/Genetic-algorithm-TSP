@@ -8,7 +8,7 @@ import time
 
 import numpy as np
 
-from DaWay import Graph
+from DaWay import Graph, Route
 from TSP_GA import TSP_GA
 from parallel_evolution import generate_offspring, initialize_worker
 
@@ -27,6 +27,8 @@ BEST_ROUTE_CSV = "best_route.csv"
 
 DISTANCE_MATRIX_LIMIT = 250
 NEIGHBOR_COUNT = 16
+SMALL_GRAPH_NEIGHBOR_COUNT = 32
+SMALL_GRAPH_NEIGHBOR_LIMIT = 1_000
 NEIGHBOR_CELL_RADIUS = 2
 MAX_ROUTE_EVALUATIONS = 20_000_000
 MAX_POPULATION_ROUTE_CELLS = 1_000_000
@@ -69,6 +71,15 @@ def _create_graph():
         neighbor_count=NEIGHBOR_COUNT,
         neighbor_cell_radius=NEIGHBOR_CELL_RADIUS,
         csv_path=CSV_PATH,
+    )
+
+
+def _configure_graph_neighbors(graph):
+    number_of_places = len(graph.list_lieux)
+    graph.neighbor_count = (
+        SMALL_GRAPH_NEIGHBOR_COUNT
+        if number_of_places <= SMALL_GRAPH_NEIGHBOR_LIMIT
+        else NEIGHBOR_COUNT
     )
 
 
@@ -136,7 +147,7 @@ def _restart_stagnated_population(graph, solver, generation):
     best_route, best_distance = solver.best_solution()
     solver.init_population(graph)
     if best_distance <= solver._best_distance:
-        solver._best_route = best_route
+        solver._best_route = Route(best_route)
         solver._best_distance = best_distance
     solver.current_mutation_rate = solver.mutation_rate
     print(
@@ -166,7 +177,7 @@ def _make_infinite_generation(
     )
     elite_count = min(solver.elite_count, len(solver.population))
     new_population = [
-        list(solver.population[index])
+        Route(solver.population[index])
         for index in ranked_indices[:elite_count]
     ]
     seen_routes = {solver._route_key(route) for route in new_population}
@@ -319,6 +330,7 @@ def _run_parallel_search(task):
     random.seed(seed)
     graph = _create_graph()
     graph.charger_graph()
+    _configure_graph_neighbors(graph)
     graph.calcul_matrice_cout_od()
     solver = _create_solver(population_size)
     solver.init_population(graph=graph)
@@ -349,6 +361,7 @@ def main(argv=None):
 
     graph = _create_graph()
     graph.charger_graph()
+    _configure_graph_neighbors(graph)
     number_of_places = len(graph.list_lieux)
     if number_of_places < 1:
         raise ValueError("The graph must contain at least one place.")

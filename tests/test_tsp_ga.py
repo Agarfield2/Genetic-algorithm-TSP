@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from DaWay import Graph, Lieu
+from DaWay import Graph, Lieu, Route
 from TSP_GA import TSP_GA
 import main
 from parallel_evolution import initialize_worker
@@ -62,6 +62,21 @@ class TSPGATests(unittest.TestCase):
         parameters.update(overrides)
         return TSP_GA(**parameters)
 
+    def test_route_exposes_its_order_and_copies_independently(self):
+        route = Route([0, 2, 1, 0])
+
+        self.assertIs(route.order, route)
+        self.assertIs(route.ordre, route)
+        self.assertEqual(route.order, [0, 2, 1, 0])
+
+        route.order = [0, 1, 2, 0]
+        copied_route = route.copy()
+        copied_route[1] = 2
+
+        self.assertIsInstance(copied_route, Route)
+        self.assertEqual(route, [0, 1, 2, 0])
+        self.assertEqual(copied_route, [0, 2, 2, 0])
+
     def test_population_starts_and_ends_at_place_zero(self):
         graph = RouteCost()
         algorithm = self.make_algorithm(population_size=8)
@@ -70,6 +85,7 @@ class TSPGATests(unittest.TestCase):
 
         self.assertEqual(len(population), 8)
         for route in population:
+            self.assertIsInstance(route, Route)
             self.assertEqual(len(route), 6)
             self.assertEqual((route[0], route[-1]), (0, 0))
             self.assertEqual(sorted(route[1:-1]), list(range(1, 5)))
@@ -143,6 +159,7 @@ class TSPGATests(unittest.TestCase):
         mutated_child = algorithm.mutation(child, mutation_rate=1.0)
 
         for route in (child, mutated_child):
+            self.assertIsInstance(route, Route)
             self.assertEqual((route[0], route[-1]), (0, 0))
             self.assertEqual(sorted(route[1:-1]), list(range(1, 5)))
 
@@ -234,6 +251,7 @@ class TSPGATests(unittest.TestCase):
 
         self.assertIn([0, 1, 2, 0], algorithm.population)
         self.assertEqual(len(algorithm.population), 5)
+        self.assertTrue(all(isinstance(route, Route) for route in algorithm.population))
 
     def test_best_solution_keeps_each_strict_global_improvement(self):
         algorithm = self.make_algorithm()
@@ -245,6 +263,7 @@ class TSPGATests(unittest.TestCase):
         algorithm._update_global_best()
 
         saved_route, saved_distance = algorithm.best_solution()
+        self.assertIsInstance(saved_route, Route)
         saved_route[1] = 99
         self.assertEqual((algorithm.best_solution()[0], saved_distance), ([0, 1, 2, 0], 10))
 
@@ -402,6 +421,7 @@ class TSPGATests(unittest.TestCase):
 
         route = graph.space_filling_route()
 
+        self.assertIsInstance(route, Route)
         self.assertTrue(graph.validate_route(route))
 
     def test_space_filling_route_preserves_scalar_hilbert_order(self):
@@ -581,6 +601,7 @@ class TSPGATests(unittest.TestCase):
         }
         self.assertEqual(len(route_keys), len(algorithm.population))
         for route in algorithm.population:
+            self.assertIsInstance(route, Route)
             self.assertTrue(graph.validate_route(route))
 
     def test_best_solution_is_saved_as_route_csv(self):
