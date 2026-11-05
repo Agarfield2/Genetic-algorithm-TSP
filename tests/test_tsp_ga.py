@@ -68,6 +68,7 @@ class TSPGATests(unittest.TestCase):
         self.assertIs(route.order, route)
         self.assertIs(route.ordre, route)
         self.assertEqual(route.order, [0, 2, 1, 0])
+        self.assertFalse(hasattr(route, "__dict__"))
 
         route.order = [0, 1, 2, 0]
         copied_route = route.copy()
@@ -76,6 +77,25 @@ class TSPGATests(unittest.TestCase):
         self.assertIsInstance(copied_route, Route)
         self.assertEqual(route, [0, 1, 2, 0])
         self.assertEqual(copied_route, [0, 2, 2, 0])
+
+    def test_population_append_reuses_owned_routes_and_wraps_plain_lists(self):
+        algorithm = self.make_algorithm()
+        population = []
+        seen_routes = set()
+        route = Route([0, 1, 2, 3, 4, 0])
+
+        self.assertTrue(
+            algorithm._append_unique_route(population, seen_routes, route)
+        )
+        self.assertIs(population[0], route)
+
+        plain_list = [0, 1, 3, 2, 4, 0]
+        self.assertTrue(
+            algorithm._append_unique_route(population, seen_routes, plain_list)
+        )
+        self.assertIsInstance(population[1], Route)
+        self.assertIsNot(population[1], plain_list)
+        self.assertEqual(population[1], plain_list)
 
     def test_population_starts_and_ends_at_place_zero(self):
         graph = RouteCost()

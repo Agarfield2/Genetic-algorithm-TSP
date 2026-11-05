@@ -1,4 +1,4 @@
-from DaWay import Route
+from DaWay import Graph, Route
 from genetic_evolution import GeneticEvolution
 
 POP_SIZE = 100
@@ -48,7 +48,11 @@ class TSP_GA(GeneticEvolution):
         self.generations_without_improvement = 0
         self.current_mutation_rate = mutation_rate
 
-    def _calculate_fitness(self, graph, routes):
+    def _calculate_fitness(
+        self,
+        graph: Graph,
+        routes: list[Route],
+    ) -> list[float]:
         if not routes:
             return []
         batch_calculator = getattr(graph, "calcul_distances_routes", None)
@@ -56,7 +60,7 @@ class TSP_GA(GeneticEvolution):
             return batch_calculator(routes, batch_size=self.fitness_batch_size)
         return [graph.calcul_distance_route(route) for route in routes]
 
-    def _ensure_fitness(self, graph):
+    def _ensure_fitness(self, graph: Graph) -> None:
         if not self.population:
             raise ValueError("Cannot reproduce an empty population.")
         if len(self._fitness) != len(self.population):
@@ -73,7 +77,7 @@ class TSP_GA(GeneticEvolution):
             # Keep a snapshot because population routes can change later.
             self._best_route = Route(self.population[best_index])
 
-    def best_solution(self):
+    def best_solution(self) -> tuple[Route, float]:
         if self._best_route is None:
             raise ValueError("The population has no evaluated solutions.")
         return self._best_route.copy(), self._best_distance

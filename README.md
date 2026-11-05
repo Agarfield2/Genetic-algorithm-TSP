@@ -45,11 +45,13 @@ python tune_hyperparameters.py
 
 Le rapport JSON est créé dans `.performance/`, qui est ignoré par Git. Pour ne tester qu'un sous-ensemble, indiquez `--configurations current,population_half,population_double`. Pour réduire le temps d'un essai, utilisez par exemple `--repeats 3`; pour choisir les tailles à tester, utilisez `--cities 100,1000,10000`. Les recommandations mesurées sur les CSV fournis ne garantissent pas le même classement sur d'autres jeux de points.
 
-## Classe `Route` et benchmark avant/après
+## Classe `Route` et performance
 
-`Route`, dans `DaWay.py`, est une sous-classe de `list` : elle conserve les accès par indice attendus par les opérateurs génétiques et expose aussi `order` et `ordre` comme alias vers la séquence. La population, les enfants et la meilleure solution sont désormais des instances de cette classe.
+`Route`, dans `DaWay.py`, est une sous-classe compacte de `list` : elle conserve les accès par indice attendus par les opérateurs génétiques, expose `order` et `ordre` comme alias vers la séquence, et n'alloue pas de dictionnaire d'attributs par instance. `TSP_GA` utilise explicitement `Graph` et `Route` dans ses annotations ; `Graph.list_lieux` contient des `Lieu`. L'affichage reste indépendant et n'est pas modifié.
 
-Le benchmark apparié avant/après a utilisé le solveur complet, 4 processus, 15 répétitions et les mêmes graines sur 100, 1 000 et 10 000 villes. Les distances obtenues sont identiques sur les 15 répétitions à chaque taille. Temps médians mesurés :
+Pour limiter le coût de cette classe, `Route` hérite directement du constructeur C de `list` (sans `__init__` Python redondant). Lorsqu'une nouvelle `Route` est ajoutée à une population, elle est conservée plutôt que copiée une deuxième fois ; une liste ordinaire provenant d'un appelant est toujours convertie en copie `Route`. Le croisement construit directement l'enfant sous forme de `Route`.
+
+Le benchmark apparié avant/après la réintroduction initiale a utilisé le solveur complet, 4 processus, 15 répétitions et les mêmes graines sur 100, 1 000 et 10 000 villes. Les distances obtenues sont identiques sur les 15 répétitions à chaque taille. Temps médians de cette première version :
 
 | Villes | Avant (`list`) | Après (`Route`) | Écart mesuré |
 |---:|---:|---:|---:|
@@ -57,7 +59,7 @@ Le benchmark apparié avant/après a utilisé le solveur complet, 4 processus, 1
 | 1 000 | 1,93 s | 2,28 s | +18 % |
 | 10 000 | 2,18 s | 2,33 s | +7 % |
 
-La réintroduction répond à la consigne de modélisation, mais n'améliore pas la vitesse ; elle ajoute un surcoût mesuré, surtout à 1 000 villes. Les temps sont des médianes d'essais parallèles sur cette machine et peuvent varier selon la charge. Les rapports complets avant et après sont dans `.performance/hyperparameter-tuning-20261105-141258.json` et `.performance/hyperparameter-tuning-20261105-141854.json`.
+Cette première version ajoutait un surcoût mesuré. Le constructeur redondant et la copie de chaque enfant lors de son ajout ont ensuite été supprimés. Une autre série de 15 répétitions a confirmé les mêmes distances médianes, mais ses temps n'étaient pas directement comparables aux premiers essais : les médianes observées étaient de 1,69 s, 3,12 s et 3,55 s, avec une charge système différente. Un microbenchmark local de création de 20 000 tournées de 1 000 indices a mesuré 0,0399 s pour la classe avec constructeur Python contre 0,0352 s pour la classe optimisée ; la variance des répétitions empêche d'en déduire un gain global du solveur. Les rapports sont dans `.performance/hyperparameter-tuning-20261105-141258.json`, `.performance/hyperparameter-tuning-20261105-141854.json` et `.performance/hyperparameter-tuning-20261105-143335.json`.
 
 ## Lancer le solveur génétique
 

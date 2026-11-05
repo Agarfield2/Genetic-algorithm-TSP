@@ -166,7 +166,9 @@ Elle lève `ValueError` si la tournée n'est pas valide.
 `TSP_GA` est l'API du solveur. Elle hérite des fonctions d'évolution, des
 opérateurs génétiques et des utilitaires de population définis dans les autres
 modules. Le guide détaillé de son fonctionnement, de l'initialisation à la fin
-de la recherche, se trouve dans [`genetique.md`](./genetique.md).
+de la recherche, se trouve dans [`genetique.md`](./genetique.md). Son
+évaluation reçoit un `Graph`, qui contient les `Lieu` associés aux indices, et
+les solutions conservées sont des objets `Route`.
 
 Le constructeur vérifie les paramètres (tailles positives, taux entre 0 et 1,
 etc.) puis conserve :

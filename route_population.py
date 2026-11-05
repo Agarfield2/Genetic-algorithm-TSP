@@ -44,7 +44,7 @@ class UniqueRoutePopulation:
         route_key = self._route_key(route)
         if route_key in seen_routes:
             return False
-        population.append(Route(route))
+        population.append(route if isinstance(route, Route) else Route(route))
         seen_routes.add(route_key)
         return True
 

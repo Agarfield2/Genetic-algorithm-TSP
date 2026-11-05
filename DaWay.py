@@ -15,8 +15,7 @@ class Lieu:
 class Route(list):
     """A list-compatible TSP tour, also exposed as order and ordre."""
 
-    def __init__(self, order=()):
-        super().__init__(order)
+    __slots__ = ()
 
     @property
     def order(self):
@@ -81,7 +80,7 @@ class Graph:
         self.neighbor_count = neighbor_count
         self.neighbor_cell_radius = neighbor_cell_radius
         self.csv_path = csv_path
-        self.list_lieux = []
+        self.list_lieux: list[Lieu] = []
         self.matrice_od = None
         self.neighbor_candidates = []
         self._coordinates = np.empty((0, 2), dtype=np.float64)

@@ -2,7 +2,6 @@ import random
 
 import numpy as np
 
-from DaWay import Route
 from TSP_GA import TSP_GA
 
 _population_buffer = None
@@ -45,7 +44,7 @@ def generate_offspring(task):
         dtype=np.int64,
     ).reshape((_population_size, _route_length))
     fitness_array = np.frombuffer(_fitness_buffer, dtype=np.float64)
-    population = [Route(route.tolist()) for route in population_array]
+    population = population_array.tolist()
     fitness = fitness_array.tolist()
 
     _solver.population = population
